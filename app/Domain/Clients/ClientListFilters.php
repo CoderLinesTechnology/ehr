@@ -30,6 +30,13 @@ final readonly class ClientListFilters
         public ?string $clinician = null,
         public string $sort = 'last_name',
         public string $direction = 'asc',
+        /** A location id (the client's primary location). */
+        public ?string $location = null,
+        /** Y-m-d: only clients with a completed visit on or after / before this day (the organization's calendar). */
+        public ?string $visitedFrom = null,
+        public ?string $visitedTo = null,
+        /** Only clients whose primary clinician is the viewer. */
+        public bool $mine = false,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -39,6 +46,17 @@ final readonly class ClientListFilters
         $oneOf = static fn (string $value, array $allowed, string $default): string => in_array($value, $allowed, true) ? $value : $default;
 
         $clinician = $text('clinician');
+        $location = $text('location');
+        $day = static function (string $value): ?string {
+            $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? \DateTimeImmutable::createFromFormat('!Y-m-d', $value) : false;
+
+            return ($date !== false && $date->format('Y-m-d') === $value && $date->format('Y') >= '1900') ? $value : null;
+        };
+        $from = $day($text('from'));
+        $to = $day($text('to'));
+        if ($from !== null && $to !== null && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
 
         return new self(
             q: mb_substr($text('q'), 0, ClientSearchTerm::MAX_LENGTH),
@@ -47,6 +65,10 @@ final readonly class ClientListFilters
             clinician: ($clinician === self::UNASSIGNED || Str::isUuid($clinician)) ? $clinician : null,
             sort: $oneOf($text('sort'), self::SORTS, 'last_name'),
             direction: strtolower($text('direction')) === 'desc' ? 'desc' : 'asc',
+            location: Str::isUuid($location) ? $location : null,
+            visitedFrom: $from,
+            visitedTo: $to,
+            mine: in_array($text('mine'), ['1', 'on', 'true'], true),
         );
     }
 
@@ -56,7 +78,11 @@ final readonly class ClientListFilters
         return $this->q !== ''
             || $this->status !== self::STATUS_OPEN
             || $this->records !== 'all'
-            || $this->clinician !== null;
+            || $this->clinician !== null
+            || $this->location !== null
+            || $this->visitedFrom !== null
+            || $this->visitedTo !== null
+            || $this->mine;
     }
 
     /** @return list<string> the status values the filter allows */

@@ -15,7 +15,7 @@ final class ClientTimelineController extends ClientProfileController
         $this->recordView($request, $client, 'timeline');
 
         $before = $request->query('before');
-        $page = $reader->page($client, is_string($before) ? $before : null);
+        $page = $reader->page($client, tenant()->membership(), is_string($before) ? $before : null);
 
         return view('app.clients.timeline', $this->header($client, 'timeline') + [
             // Grouped by the organization's calendar day, in order.

@@ -67,7 +67,14 @@ class DesignFixtureSeeder extends Seeder
         ])->save();
 
         $tenant->runAs($organization, function () use ($organization, $created, $sarah, $password) {
-            app(SettingsService::class)->seedOrganization($organization, ['branding.primary_color' => '#2563EB', 'branding.secondary_color' => '#93C5FD']);
+            // Screens in the comps show "Apr 28, 2025" and "10:00 AM".
+            app(SettingsService::class)->seedOrganization($organization, [
+                'branding.primary_color' => '#2563EB', 'branding.secondary_color' => '#93C5FD',
+                'general.date_format' => 'M j, Y', 'general.time_format' => 'g:i A',
+                // Comp 01: weeks start on Sunday; the grid shows 8 AM – 5 PM rows (until 18:00).
+                'general.week_starts_on' => '7',
+                'scheduling.calendar_day_start' => '08:00', 'scheduling.calendar_day_end' => '18:00',
+            ]);
 
             $owner = $created->ownerMembership;
             $owner->forceFill(['name_prefix' => 'Dr.', 'title' => 'Clinical Psychologist', 'color' => '#307EF6'])->save();
@@ -103,6 +110,21 @@ class DesignFixtureSeeder extends Seeder
                 $service->locations()->attach(array_map(fn ($l) => $l->id, array_values($locations)));
                 $services[$name] = $service;
             }
+
+            // Weekday availability for every clinician: the comps show a fully set-up practice
+            // (no onboarding checklist).
+            foreach ($clinicians as $index => $membership) {
+                foreach ([1, 2, 3, 4, 5] as $weekday) {
+                    $rule = new \App\Models\AvailabilityRule([
+                        'membership_id' => $membership->id,
+                        'location_id' => $locations[$index === 'james' ? 'Kumasi' : 'Accra']->id,
+                        'weekday' => $weekday, 'start_time' => '08:00', 'end_time' => '18:00',
+                        'modality' => 'any', 'effective_from' => '2025-01-06',
+                    ]);
+                    $rule->save();
+                }
+            }
+            app(\App\Domain\Organization\RefreshOnboardingStatus::class)($organization);
 
             $clients = $this->clients($owner);
             $this->appointments($clients, $services, $clinicians, $locations, $sarah);
@@ -165,8 +187,21 @@ class DesignFixtureSeeder extends Seeder
 
         // 48 non-archived clients in total: 42 active, 1 pending, 5 inactive (the Clients comp's stat cards).
         foreach (range(29, 59) as $n) {
-            $make($n, fake()->firstName(), fake()->lastName(), $n <= 54 ? ClientStatus::Active : ClientStatus::Inactive);
+            $make($n, fake()->firstName(), fake()->lastName(), $n <= 55 ? ClientStatus::Active : ClientStatus::Inactive);
         }
+
+        // Registration dates relative to the comps' "today" (28 Apr 2025): 6 new in the last
+        // 30 days and 4 in the 30 before ("New Clients (30 days) 6 ↑ 50%"), the rest older.
+        $today = CarbonImmutable::parse('2025-04-28 08:00', self::TZ);
+        Client::query()->orderBy('client_number')->get()->each(function (Client $client) use ($today) {
+            $n = $client->client_number;
+            $daysAgo = match (true) {
+                $n >= 54 => 3 + ($n - 54) * 4,     // 6 clients: 3–23 days ago
+                $n >= 50 => 35 + ($n - 50) * 5,    // 4 clients: 35–50 days ago
+                default => 90 + (53 - $n) * 6,     // older
+            };
+            $client->forceFill(['created_at' => $today->subDays($daysAgo), 'updated_at' => $today->subDays($daysAgo)])->saveQuietly();
+        });
 
         return $clients;
     }

@@ -82,7 +82,7 @@ final class SettingsRegistry
 
             // ── Organization: regional formats ──────────────────────────────
             new SettingDefinition('general.date_format', $o, $T::TYPE_ENUM, 'd/m/Y', 'general', 'Date format',
-                options: ['d/m/Y' => '31/12/2026', 'm/d/Y' => '12/31/2026', 'Y-m-d' => '2026-12-31', 'j M Y' => '31 Dec 2026']),
+                options: ['d/m/Y' => 'DD/MM/YYYY', 'm/d/Y' => 'MM/DD/YYYY', 'Y-m-d' => 'YYYY-MM-DD', 'j M Y' => 'D MMM YYYY', 'M j, Y' => 'MMM D, YYYY']),
             new SettingDefinition('general.time_format', $o, $T::TYPE_ENUM, 'H:i', 'general', 'Time format',
                 options: ['H:i' => '24-hour (14:30)', 'g:i A' => '12-hour (2:30 PM)']),
             new SettingDefinition('general.week_starts_on', $o, $T::TYPE_ENUM, '1', 'general', 'Week starts on',

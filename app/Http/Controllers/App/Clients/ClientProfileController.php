@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\App\Clients;
 
-use App\Domain\Clients\RecordClientView;
+use App\Domain\Clients\RecordClientAccess;
 use App\Domain\Saas\EntitlementService;
 use App\Domain\Saas\FeatureRegistry;
 use App\Http\Controllers\Controller;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
  */
 abstract class ClientProfileController extends Controller
 {
-    public function __construct(private readonly RecordClientView $recordView) {}
+    public function __construct(private readonly RecordClientAccess $recordView) {}
 
     /** `client.viewed` in the audit trail: once per user and client per ten minutes. */
     protected function recordView(Request $request, Client $client, string $tab): void

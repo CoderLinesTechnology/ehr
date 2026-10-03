@@ -36,8 +36,10 @@ WellNest — "Better Care. Healthier Tomorrows." Font **Inter** (self-hosted, `p
 6. **Calendar event colour follows the clinician** (Sarah Carter blue, James Allen green, Lisa Morgan orange, a
    fourth clinician teal); **any telehealth appointment is purple**. A clinician's colour is chosen from these
    families (Settings → Team).
-7. **Status pills:** Confirmed green, Scheduled grey, Pending blue (client status "Pending"; also used for
-   appointment requests when online booking arrives), Inactive grey, Active green — screen colours, not the sheet's.
+7. **Status pills** (screen colours, not the sheet's): an appointment that is booked but not yet confirmed
+   (`scheduled`) reads **Pending** in blue — the majority of comp rows (dashboard 08, 4 of 5 rows in 01); the
+   single grey "Scheduled" row in comp 01 is not reproduced. Confirmed/Completed green, Cancelled grey, No-show
+   red; client status Pending blue, Active green, Inactive grey. Use `AppointmentStatus::badgeLabel()/badgeTone()`.
 8. **Comp artifacts are not reproduced:** "44:00 PM" (→ 04:00 PM), garbled glyphs on the sheet ("Deofoed",
    "Icon Brittped"), "Filters s" (→ "Filters"), glitch-filled icons (→ plain Lucide `map-pin` / `video`).
 9. Sample people and numbers in the comps are content, not design: real screens show the organization's data.

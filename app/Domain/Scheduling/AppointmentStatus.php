@@ -121,6 +121,27 @@ enum AppointmentStatus: string
         };
     }
 
+    /**
+     * Pill text on screens (docs/design/SPEC.md decision 7): a booked but not
+     * yet confirmed appointment reads "Pending", as in the comps.
+     */
+    public function badgeLabel(): string
+    {
+        return $this === self::Scheduled ? 'Pending' : $this->label();
+    }
+
+    /** Pill tone on screens: pending blue, confirmed/completed green, cancelled grey, no-show red. */
+    public function badgeTone(): string
+    {
+        return match ($this) {
+            self::Scheduled => 'pending',
+            self::Confirmed, self::Completed => 'success',
+            self::CheckedIn, self::InProgress => 'info',
+            self::Cancelled, self::Rescheduled => 'neutral',
+            self::NoShow => 'danger',
+        };
+    }
+
     public function tone(): string
     {
         return match ($this) {

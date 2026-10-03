@@ -24,7 +24,7 @@
     <span class="stat__label">{{ $label }}</span>
     <span class="stat__value">{{ $value }}</span>
     @if ($hasTrend)
-        <span class="stat__delta {{ $down ? 'stat__delta--down' : '' }}"><x-ui.icon :name="$down ? 'arrow-down' : 'arrow-up'" :size="12" /><span>{{ rtrim(rtrim(number_format(abs((float) $trend), 1), '0'), '.') }}%</span><span class="sr-only">{{ $down ? 'decrease' : 'increase' }}</span></span>
+        <span class="stat__delta {{ $down ? 'stat__delta--down' : '' }}"><x-ui.icon :name="$down ? 'arrow-down' : 'arrow-up'" :size="12" /><span>{{ number_format(abs((float) $trend), 0) }}%</span><span class="sr-only">{{ $down ? 'decrease' : 'increase' }}</span></span>
     @elseif (filled($alert))
         <span class="stat__delta stat__delta--alert"><x-ui.icon name="circle-alert" :size="16" /><span>{{ $alert }}</span></span>
     @endif

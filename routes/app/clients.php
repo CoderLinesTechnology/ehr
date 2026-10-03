@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\App\Clients\ClientAppointmentController;
+use App\Http\Controllers\App\Clients\ClientBulkStatusController;
 use App\Http\Controllers\App\Clients\ClientContactController;
 use App\Http\Controllers\App\Clients\ClientController;
 use App\Http\Controllers\App\Clients\ClientStatusController;
@@ -25,6 +26,9 @@ Route::middleware('feature:clients')->group(function () {
         ->middleware('can:create,'.Client::class)->name('clients.create');
     Route::post('clients', [ClientController::class, 'store'])
         ->middleware('can:create,'.Client::class)->name('clients.store');
+    // Bulk "mark inactive" from the list: each client is authorized on its own (ClientPolicy::changeStatus) inside the action.
+    Route::post('clients/bulk-status', ClientBulkStatusController::class)
+        ->middleware('can:viewAny,'.Client::class)->name('clients.bulk-status');
 
     Route::prefix('clients/{client}')->middleware('can:view,client')->scopeBindings()->group(function () {
         Route::get('/', [ClientController::class, 'show'])->name('clients.show');

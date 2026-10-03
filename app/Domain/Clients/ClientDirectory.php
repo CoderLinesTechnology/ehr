@@ -4,6 +4,7 @@ namespace App\Domain\Clients;
 
 use App\Models\Client;
 use App\Models\OrganizationMembership;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -41,6 +42,30 @@ final class ClientDirectory
             $query->where('primary_clinician_membership_id', $filters->clinician);
         }
 
+        if ($filters->location !== null) {
+            $query->where('primary_location_id', $filters->location);
+        }
+
+        if ($filters->mine) {
+            $query->where('primary_clinician_membership_id', $membership->id);
+        }
+
+        if ($filters->visitedFrom !== null || $filters->visitedTo !== null) {
+            $timezone = tenant()->organizationOrFail()->timezone;
+            $from = $filters->visitedFrom !== null ? CarbonImmutable::parse($filters->visitedFrom, $timezone)->startOfDay()->utc() : null;
+            $to = $filters->visitedTo !== null ? CarbonImmutable::parse($filters->visitedTo, $timezone)->addDay()->startOfDay()->utc() : null;
+
+            // "Last appointment in this range": a completed visit inside it (the same rule the list's Last Visit column uses).
+            $query->whereExists(function ($visit) use ($membership, $from, $to) {
+                $visit->selectRaw('1')->from('appointments')
+                    ->whereColumn('appointments.client_id', 'clients.id')
+                    ->where('appointments.organization_id', $membership->organization_id)
+                    ->where('appointments.status', 'completed')
+                    ->when($from, fn ($q) => $q->where('appointments.starts_at', '>=', $from->format('Y-m-d H:i:s.uP')))
+                    ->when($to, fn ($q) => $q->where('appointments.starts_at', '<', $to->format('Y-m-d H:i:s.uP')));
+            });
+        }
+
         $direction = $filters->direction;
 
         match ($filters->sort) {
@@ -50,5 +75,16 @@ final class ClientDirectory
         };
 
         return $query->with('primaryClinician.user:id,name');
+    }
+
+    /**
+     * The list screen's query: query() plus the e-mail the Contact column shows.
+     * (query() stays e-mail-free for every other consumer.)
+     *
+     * @return Builder<Client>
+     */
+    public function listQuery(OrganizationMembership $membership, ClientListFilters $filters): Builder
+    {
+        return $this->query($membership, $filters)->addSelect('email');
     }
 }
