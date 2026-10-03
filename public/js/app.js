@@ -437,6 +437,36 @@
     });
   }
 
+  /* ------------------------------------------------ inside a call page's app frame */
+
+  // While a video call floats, the telehealth call page shows our pages in its app frame (public/js/screens/
+  // telehealth.js). Inside that frame, whatever leaves this organization's app (sign-out, account, the platform
+  // console, another organization, another site) replaces the whole tab: those pages refuse to be framed. Signing
+  // out also tells the call page not to ask "Leave the call?". Inactive in any other page.
+  function initCallFrame() {
+    var host = null;
+    if (window.top === window) { return; }
+    try { host = window.parent.document.querySelector('[data-call-host]'); } catch (e) { return; }
+    if (!host) { return; }
+    var base = host.getAttribute('data-call-host') || '';
+    function leavesApp(raw) {
+      var url;
+      try { url = new URL(raw, window.location.href); } catch (e) { return false; }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') { return false; }
+      return url.origin !== window.location.origin || (url.pathname !== base && url.pathname.indexOf(base + '/') !== 0);
+    }
+    doc.addEventListener('click', function (event) {
+      var link = closest(event.target, 'a[href]');
+      if (link && !link.hasAttribute('target') && !link.hasAttribute('download') && leavesApp(link.getAttribute('href'))) { link.setAttribute('target', '_top'); }
+    }, true);
+    doc.addEventListener('submit', function (event) {
+      var form = event.target;
+      if (!form || form.nodeName !== 'FORM' || form.hasAttribute('target') || !leavesApp(form.getAttribute('action') || window.location.href)) { return; }
+      form.setAttribute('target', '_top');
+      if ((form.getAttribute('method') || 'get').toLowerCase() === 'post') { host.setAttribute('data-call-leaving', ''); }
+    }, true);
+  }
+
   /* ------------------------------------------------------------------- boot */
 
   function boot() {
@@ -447,6 +477,7 @@
     initAlerts();
     initForms();
     initUtilities();
+    initCallFrame();
   }
 
   if (doc.readyState === 'loading') { doc.addEventListener('DOMContentLoaded', boot); } else { boot(); }

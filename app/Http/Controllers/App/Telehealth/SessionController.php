@@ -16,6 +16,7 @@ use App\Domain\Telehealth\SessionListReader;
 use App\Domain\Telehealth\SessionStatus;
 use App\Domain\Telehealth\TelehealthSettings;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Telehealth\CallPageRequest;
 use App\Models\Appointment;
 use App\Models\TelehealthSession;
 use Illuminate\Http\RedirectResponse;
@@ -123,13 +124,21 @@ final class SessionController extends Controller
     /**
      * The call: Daily Prebuilt framed in the page with a pass minted for this viewer (never stored or logged; the
      * page is no-store like every signed-in page). Only a running session has a call; others go to their page.
+     * The page is also the "call host": while the user browses the app in its frame, the call floats (spec
+     * docs/design/spec/screens/12-telehealth-call.md; behaviour in public/js/screens/telehealth.js).
      */
-    public function call(TelehealthSession $session, SessionDetailsReader $reader, IssueCallPass $issue): View|RedirectResponse
+    public function call(CallPageRequest $request, TelehealthSession $session, SessionDetailsReader $reader, IssueCallPass $issue): View|RedirectResponse
     {
         if ($session->status !== SessionStatus::InProgress) {
             return $session->status === SessionStatus::Completed
                 ? redirect()->route('app.telehealth.show', ['session' => $session])
                 : redirect()->route('app.telehealth.join', ['session' => $session]);
+        }
+
+        // Opened inside a frame: the call page's own app frame, where the user browses while a call floats. A call
+        // never nests or connects twice — no pass, no Daily: a stub asks the page around it to bring its call back.
+        if (in_array($request->headers->get('Sec-Fetch-Dest'), ['iframe', 'frame'], true)) {
+            return view('app.telehealth.call-open', ['session' => $session]);
         }
 
         $membership = tenant()->membership();
@@ -150,6 +159,8 @@ final class SessionController extends Controller
             'canManage' => Gate::allows('telehealth.manage'),
             'clinical' => $clinical,
             'recordingOn' => app(TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
+            // The page the user was browsing while the call floated (refresh restores it), validated: see CallPageRequest.
+            'appPath' => $pass !== null ? $request->appPath(tenant()->organizationOrFail()->slug) : null,
         ]);
     }
 

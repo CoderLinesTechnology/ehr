@@ -307,6 +307,65 @@ button.tj-join { width: calc(100% - 28px); }
 @media (max-width: 69.999rem) {
   .tv-stage { height: min(72vh, 620px); min-height: 360px; }
 }
+.tv-head__title:focus { outline: 0; }   /* focused by the script when the call is expanded */
+.tv-head__fs { position: relative; flex: none; gap: 7px; height: 32px; padding: 0 12px; }
+.tv-head__fs[aria-pressed="true"] { background: #eef4fe; }
+.tv-head__fs:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+@media (max-width: 39.999rem) {
+  .tv-head__fs { width: 32px; padding: 0; }
+  .tv-head__fs-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+
+/* ---- The call window ---------------------------------------------------------------------------------------
+   The dock holds the Daily frame and never moves in the DOM (a moved iframe reloads: the call would drop). Docked:
+   it fills the stage. Floating (.is-floating, while the user browses the app frame): a fixed window placed by the
+   script with a transform inside .tv-float-area. Full screen: the dock itself (top layer; UA styles fill the screen).
+   The window bar only shows when floating or full screen. */
+.tv-dock { position: absolute; inset: 0; display: flex; flex-direction: column; background: #17212a; }
+.tv-dock > .tv-frame { flex: 1; min-height: 0; height: auto; }
+.tv-bar {
+  display: none; flex: none; align-items: center; gap: 2px; height: 36px; padding: 0 4px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .08); background: #17212a; color: #fff;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.tv-dock.is-floating .tv-bar, .tv-dock:fullscreen .tv-bar { display: flex; }
+.tv-dock:fullscreen [data-call-expand], .tv-dock:fullscreen [data-call-move] { display: none; }
+.tv-dock:fullscreen { border-radius: 0; box-shadow: none; }
+.tv-dock:fullscreen .tv-bar { cursor: default; }
+.tv-bar__name { flex: 1; min-width: 0; overflow: hidden; font-size: 12.5px; font-weight: 600; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.tv-bar__btn {
+  display: grid; flex: none; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: #c9d6ea; cursor: pointer;
+}
+.tv-bar__btn:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.tv-bar__btn:focus-visible { outline: 2px solid #8fbaff; outline-offset: -2px; color: #fff; }
+.tv-bar__btn[aria-pressed="true"] { background: rgba(255, 255, 255, .16); color: #fff; }
+.tv-bar__btn--end { color: #ffb0b0; }
+.tv-bar__btn--end:hover { background: #c62828; color: #fff; }
+.tv-dock.is-floating {
+  position: fixed; inset: auto; top: 0; left: 0; z-index: 301; width: 360px; height: 240px; overflow: hidden;
+  border-radius: 12px; box-shadow: 0 14px 34px rgba(8, 22, 63, .3), 0 2px 8px rgba(8, 22, 63, .18);
+}
+html.tv-dragging .tv-bar { cursor: grabbing; }
+html.tv-dragging .tv-frame, html.tv-dragging .tv-appframe { pointer-events: none; }   /* frames would swallow the drag */
+.tv-appframe { position: fixed; inset: 0; z-index: 300; display: block; width: 100%; height: 100%; border: 0; background: var(--shell-main-bg, #f8fbfe); }
+html.tv-floating, html.tv-floating body { overflow: hidden; }   /* the call view behind the frame does not scroll */
+.tv-float-area { position: fixed; inset: 16px; visibility: hidden; pointer-events: none; }
+@media (max-width: 39.999rem) {
+  .tv-dock.is-floating { width: min(256px, calc(100vw - 24px)); height: 178px; }
+  .tv-bar { height: 34px; padding-left: 10px; }
+  /* Above the phone tab bar of the page in the frame (56px + safe area). */
+  .tv-float-area { inset: 12px 12px calc(68px + env(safe-area-inset-bottom)) 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tv-dock.is-floating.is-gliding { transition: transform .22s ease; }
+}
+
+/* The call page requested inside the app frame (call-open.blade.php). */
+.tv-open { display: grid; justify-items: start; gap: 10px; max-width: 520px; margin-top: 8px; padding: 22px 24px; }
+.tv-open__icon { color: #1f78f0; }
+.tv-open__title { margin: 0; color: #00061e; font-size: 17px; font-weight: 600; line-height: 24px; }
+.tv-open__text { margin: 4px 0 0; color: #4d6389; font-size: 12px; line-height: 18px; }
 
 /* Transcript page */
 .tc { display: grid; gap: 14px; max-width: 860px; }

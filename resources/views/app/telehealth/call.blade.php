@@ -1,8 +1,14 @@
-{{-- The call (spec docs/design/spec/screens/12-telehealth-call.md): Daily Prebuilt in a plain iframe, no Daily script in this page. The frame URL carries this viewer's pass: it is printed here only (the page is no-store). --}}
+{{-- The call (spec docs/design/spec/screens/12-telehealth-call.md): Daily Prebuilt in a plain iframe, no Daily script in this page. The frame URL carries this viewer's pass: it is printed here only (the page is no-store).
+     With a call, the page is also the "call host": links into the app open in the app frame (wellnest-app) and the call floats above it. The Daily frame never moves in the DOM (a moved iframe reloads and drops the call): its dock stays in the stage and only classes and inline geometry change. --}}
 @php
     $format = app(\App\Support\Formatter::class);
     $startsAt = $format->localDate($details->startsAt, $details->timezone);
     $range = $format->time($details->startsAt, $details->timezone).' – '.$format->time($details->endsAt, $details->timezone);
+    $host = $pass !== null ? [
+        'base' => parse_url(route('app.dashboard'), PHP_URL_PATH),
+        'call' => parse_url(route('app.telehealth.call', ['session' => $session]), PHP_URL_PATH),
+        'join' => parse_url(route('app.telehealth.join', ['session' => $session]), PHP_URL_PATH),
+    ] : null;
 @endphp
 <x-layouts.app title="Telehealth call">
     @push('styles')
@@ -12,24 +18,39 @@
         <script src="{{ asset('js/screens/telehealth.js') }}?v={{ filemtime(public_path('js/screens/telehealth.js')) }}" defer></script>
     @endpush
 
-    <div class="tv">
+    <div class="tv" @if ($host !== null) data-call-host="{{ $host['base'] }}" data-call-path="{{ $host['call'] }}" data-call-join="{{ $host['join'] }}" @if ($appPath !== null) data-call-app="{{ $appPath }}" @endif @endif>
         <section class="tv-main" aria-labelledby="tv-title">
             <header class="tv-head">
                 <a href="{{ route('app.telehealth.join', ['session' => $session]) }}" class="tj-back"><x-ui.icon name="arrow-left" :size="14" :stroke="2.3" />Back to session</a>
                 <div class="tv-head__row">
                     @include('app.telehealth.partials-avatar', ['name' => $details->clientName, 'number' => $details->clientNumber, 'size' => 'lg', 'class' => 'tv-head__avatar'])
                     <div class="tv-head__text">
-                        <h1 class="tv-head__title" id="tv-title">{{ $details->clientName }}</h1>
+                        <h1 class="tv-head__title" id="tv-title" tabindex="-1">{{ $details->clientName }}</h1>
                         <p class="tv-head__when">{{ $details->serviceName }} <i aria-hidden="true">•</i> {{ $startsAt }} <i aria-hidden="true">•</i> {{ $range }}</p>
                     </div>
                     <span class="tele-pill tele-pill--warning tv-head__pill">In progress</span>
+                    @if ($pass !== null)
+                        {{-- Revealed by the script when the browser allows full screen. --}}
+                        <button type="button" class="tj-btn tj-btn--outline tv-head__fs" data-call-fullscreen aria-pressed="false" title="Full screen" hidden><x-ui.icon name="maximize" :size="15" :stroke="2" /><span class="tv-head__fs-label">Full screen</span></button>
+                    @endif
                 </div>
             </header>
 
             @if ($pass !== null)
                 <div class="tv-stage">
-                    <iframe class="tv-frame" src="{{ $pass->frameUrl }}" title="Video call with {{ $details->clientName }}"
-                        allow="camera; microphone; autoplay; display-capture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
+                    <div class="tv-dock" role="region" aria-label="Video call with {{ $details->clientName }}" data-call-dock>
+                        {{-- The window bar: shown while the call floats over the app, and in full screen. --}}
+                        <div class="tv-bar" data-call-bar>
+                            <span class="tv-bar__name">{{ $details->clientName }}</span>
+                            <button type="button" class="tv-bar__btn" data-call-expand aria-label="Expand call" title="Expand call"><x-ui.icon name="maximize-2" :size="16" :stroke="2" /></button>
+                            <button type="button" class="tv-bar__btn" data-call-fullscreen aria-label="Full screen" aria-pressed="false" title="Full screen" hidden><x-ui.icon name="maximize" :size="16" :stroke="2" /></button>
+                            <button type="button" class="tv-bar__btn" data-call-move aria-label="Move to next corner" title="Move to next corner"><x-ui.icon name="move" :size="16" :stroke="2" /></button>
+                            <button type="button" class="tv-bar__btn tv-bar__btn--end" data-call-end aria-label="End session" title="End session"><x-ui.icon name="phone-off" :size="16" :stroke="2" /></button>
+                        </div>
+                        <iframe class="tv-frame" src="{{ $pass->frameUrl }}" title="Video call with {{ $details->clientName }}"
+                            allow="camera; microphone; autoplay; display-capture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
+                        <p class="sr-only" role="status" data-call-status></p>
+                    </div>
                 </div>
             @else
                 <div class="tv-stage tv-stage--empty">
@@ -80,4 +101,10 @@
             </div>
         </aside>
     </div>
+
+    @if ($pass !== null)
+        {{-- The app frame: other WellNest pages open here (same origin, normal pages with their own scripts) while the call floats. No camera, microphone or screen capture inside it: the call owns them. --}}
+        <iframe name="wellnest-app" class="tv-appframe" title="WellNest" allow="camera 'none'; microphone 'none'; display-capture 'none'" hidden data-call-app-frame></iframe>
+        <div class="tv-float-area" aria-hidden="true" data-call-area></div>
+    @endif
 </x-layouts.app>

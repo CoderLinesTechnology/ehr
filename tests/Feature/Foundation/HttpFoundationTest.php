@@ -166,7 +166,10 @@ class HttpFoundationTest extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString("script-src 'self'", $response->headers->get('Content-Security-Policy'));
-        $this->assertSame('DENY', $response->headers->get('X-Frame-Options'));
+        // Staff-app pages may be framed by WellNest itself only (the telehealth call keeps running while the app is
+        // browsed in a same-origin frame); everything else refuses frames: tests/Feature/Security/FramingHeadersTest.php.
+        $this->assertSame('SAMEORIGIN', $response->headers->get('X-Frame-Options'));
+        $this->assertStringContainsString("frame-ancestors 'self'", $response->headers->get('Content-Security-Policy'));
         $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
     }

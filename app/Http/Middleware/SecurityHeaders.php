@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -11,6 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
  * origin — no inline script anywhere in the application. Two per-route
  * opt-ins, read from route defaults: `media` (camera/microphone for this
  * origin) and `video_call` (frame Daily and delegate devices to it).
+ *
+ * Framing: the staff application's pages (routes named `app.*`, /o/{organization}/…) may be framed by WellNest
+ * itself — the telehealth call page keeps a call running in a floating window while the user browses the app in a
+ * same-origin frame. Everything else (sign-in, account, platform console, webhooks, responses without a route)
+ * refuses every frame.
  */
 final class SecurityHeaders
 {
@@ -19,9 +25,12 @@ final class SecurityHeaders
         $response = $next($request);
 
         // The telehealth call page (->defaults('video_call', true)) is the only page that may frame anything: Daily
-        // Prebuilt, from Daily's three domains (the two webrtc ones are its fallbacks). No Daily script runs in this
-        // page — script-src stays 'self' everywhere.
-        $videoCall = (bool) ($request->route()?->defaults['video_call'] ?? false);
+        // Prebuilt, from Daily's three domains (the two webrtc ones are its fallbacks), and our own pages ('self':
+        // the app frame the user browses in while the call floats). No Daily script runs in this page — script-src
+        // stays 'self' everywhere.
+        $route = $request->route();
+        $videoCall = (bool) ($route?->defaults['video_call'] ?? false);
+        $frameable = $route instanceof Route && str_starts_with((string) $route->getName(), 'app.');
 
         $headers = $response->headers;
         $headers->set('Content-Security-Policy', implode('; ', array_filter([
@@ -31,13 +40,13 @@ final class SecurityHeaders
             "img-src 'self' data:",
             "font-src 'self'",
             "connect-src 'self'",
-            $videoCall ? 'frame-src https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net' : null,
+            $videoCall ? "frame-src 'self' https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net" : null,
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
-            "frame-ancestors 'none'",
+            $frameable ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
         ])));
-        $headers->set('X-Frame-Options', 'DENY');
+        $headers->set('X-Frame-Options', $frameable ? 'SAMEORIGIN' : 'DENY');
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         // Camera and microphone stay off everywhere except routes that declare
@@ -48,9 +57,11 @@ final class SecurityHeaders
         // to the Daily frame, whose `allow` attribute cannot exceed this policy. An
         // origin list with a wildcard sub-domain ("https://*.daily.co") is not
         // honoured by every browser, so the allowlist is `*`: safe here because the
-        // page's CSP frame-src admits only Daily's domains, and a frame receives a
-        // feature only when its own `allow` attribute names it.
-        $media = (bool) ($request->route()?->defaults['media'] ?? false);
+        // page's CSP frame-src admits only Daily's domains and our own origin, a
+        // cross-origin frame receives a feature only when its own `allow` attribute
+        // names it, and the page's one same-origin frame (the app frame) is denied
+        // camera, microphone and screen capture by its `allow` attribute.
+        $media = (bool) ($route?->defaults['media'] ?? false);
         $headers->set('Permissions-Policy', match (true) {
             $videoCall => 'camera=*, microphone=*, display-capture=*, fullscreen=*, autoplay=*, geolocation=(), payment=()',
             $media => 'camera=(self), microphone=(self), geolocation=(), payment=()',

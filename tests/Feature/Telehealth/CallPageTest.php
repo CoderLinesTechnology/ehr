@@ -68,9 +68,10 @@ class CallPageTest extends TelehealthTestCase
 
         $call = $this->get($this->callUrl($session))->assertOk();
         $csp = (string) $call->headers->get('Content-Security-Policy');
-        $this->assertStringContainsString('frame-src https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net', $csp);
+        // Daily's domains, and our own origin for the app frame the user browses in while the call floats.
+        $this->assertStringContainsString("frame-src 'self' https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net", $csp);
         $this->assertStringContainsString("script-src 'self';", $csp);
-        $this->assertStringContainsString("frame-ancestors 'none'", $csp);
+        $this->assertStringContainsString("frame-ancestors 'self'", $csp);   // a staff-app page: framed by WellNest only
         $policy = (string) $call->headers->get('Permissions-Policy');
         foreach (['camera=*', 'microphone=*', 'display-capture=*', 'fullscreen=*', 'autoplay=*', 'geolocation=()', 'payment=()'] as $feature) {
             $this->assertStringContainsString($feature, $policy);
