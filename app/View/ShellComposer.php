@@ -34,15 +34,15 @@ final class ShellComposer
         ['key' => 'tasks', 'label' => 'Tasks', 'icon' => 'calendar-check', 'route' => 'app.tasks.index', 'active' => ['app.tasks.*'], 'feature' => 'tasks', 'any' => []],
         ['key' => 'documents', 'label' => 'Documents', 'icon' => 'file-text', 'route' => 'app.documents.index', 'active' => ['app.documents.*'], 'feature' => 'documents', 'any' => []],
         ['key' => 'resources', 'label' => 'Resources', 'icon' => 'book-open', 'route' => 'app.resources.index', 'active' => ['app.resources.*'], 'feature' => null, 'any' => ['resources.view']],
-        ['key' => 'telehealth', 'label' => 'Telehealth', 'icon' => 'video', 'route' => 'app.telehealth.index', 'active' => ['app.telehealth.*'], 'feature' => 'telehealth', 'any' => []],
-        ['key' => 'programs', 'label' => 'Programs', 'icon' => 'users-round', 'route' => 'app.programs.index', 'active' => ['app.programs.*'], 'feature' => 'programs', 'any' => []],
+        ['key' => 'telehealth', 'label' => 'Telehealth', 'icon' => 'video', 'route' => 'app.telehealth.index', 'active' => ['app.telehealth.*'], 'feature' => 'telehealth', 'any' => ['telehealth.join', 'telehealth.notes', 'telehealth.manage']],
+        ['key' => 'programs', 'label' => 'Programs', 'icon' => 'users-round', 'route' => 'app.programs.index', 'active' => ['app.programs.*'], 'feature' => 'programs', 'any' => ['programs.view']],
         ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-column', 'route' => 'app.reports.index', 'active' => ['app.reports.*'], 'feature' => null, 'any' => ['reports.view']],
     ];
 
     /** Anyone holding one of these sees the Settings entry. */
     private const SETTINGS_PERMISSIONS = [
         'organization.settings.manage', 'locations.manage', 'services.manage', 'team.view', 'team.manage',
-        'roles.manage', 'audit.view', 'demo.manage', 'availability.manage_own', 'availability.manage_all',
+        'roles.manage', 'audit.view', 'demo.manage', 'availability.manage_own', 'availability.manage_all', 'telehealth.manage',
     ];
 
     private const PLATFORM_NAV = [

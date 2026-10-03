@@ -66,6 +66,17 @@ final class PermissionRegistry
             ['resources.view', $o, 'Resources', 'View resources', 'Guides, forms, documents, videos and FAQs.', false],
             ['resources.manage', $o, 'Resources', 'Manage resources', 'Publish, edit and retire resources.', false],
 
+            // Programs & levels of care
+            ['programs.view', $o, 'Programs', 'View programs', 'Programs, levels of care, schedules and participant counts. Participants of 42 CFR Part 2 programs need "View substance-use program records".', false],
+            ['programs.manage', $o, 'Programs', 'Manage programs', 'Create and edit programs, levels of care, staff and the program schedule.', false],
+            ['programs.enroll', $o, 'Programs', 'Admit, transition and discharge', 'Admit clients to programs, change their level of care, put on hold, discharge, transfer and record attendance.', true],
+            ['programs.view_sud', $o, 'Programs', 'View substance-use program records', 'Participants, attendance and history of programs flagged as substance-use treatment (42 CFR Part 2).', true],
+
+            // Telehealth
+            ['telehealth.join', $o, 'Telehealth', 'Join telehealth sessions', 'See telehealth sessions and join them (own sessions, or all with "View all appointments").', false],
+            ['telehealth.notes', $o, 'Telehealth', 'Telehealth session notes and recordings', 'Write session notes; open recordings and transcripts of sessions the user can see.', true],
+            ['telehealth.manage', $o, 'Telehealth', 'Manage telehealth settings', 'Meeting-link hosts, default link, join window, recording and AI transcript options.', false],
+
             // Platform (Super Admin console)
             ['platform.dashboard.view', $p, 'Platform', 'View platform dashboard', '', false],
             ['platform.organizations.view', $p, 'Platform', 'View organizations', 'Organization profile, status, plan and usage counts — no client data.', false],

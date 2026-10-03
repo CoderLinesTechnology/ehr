@@ -32,7 +32,13 @@ final class SecurityHeaders
         $headers->set('X-Frame-Options', 'DENY');
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
-        $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+        // Camera and microphone stay off everywhere except routes that declare
+        // ->defaults('media', true) (the telehealth device check), and then
+        // only for this origin.
+        $media = (bool) ($request->route()?->defaults['media'] ?? false);
+        $headers->set('Permissions-Policy', $media
+            ? 'camera=(self), microphone=(self), geolocation=(), payment=()'
+            : 'camera=(), microphone=(), geolocation=(), payment=()');
         $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
 
         if ($request->isSecure()) {

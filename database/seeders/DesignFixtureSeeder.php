@@ -142,9 +142,11 @@ class DesignFixtureSeeder extends Seeder
             $clients = $this->clients($owner);
             $this->appointments($clients, $services, $clinicians, $locations, $sarah);
             $this->conversations($organization, $owner, $clinicians, $clients, $password);
+            $this->telehealth($organization, $clients, $services, $clinicians, $locations, $sarah);
         });
 
         $tenant->runAs($created->organization, fn () => $this->resources($created->organization));
+        $tenant->runAs($created->organization, fn () => $this->programs());
         app(SettingsService::class)->setPlatform(['platform.support_email' => 'support@wellnest.org'], null);
 
         $this->platformConsole($password, $sarah);
@@ -504,5 +506,180 @@ class DesignFixtureSeeder extends Seeder
                 }
             }
         }
+    }
+
+    /**
+     * Comp 03: six programs with the comp's texts, levels of care, 56 active participants (12/8/15/10/6/5), four
+     * completed enrollments and the three sessions of the Upcoming Program Schedule (plus two past ones with
+     * attendance). Written straight through the models, like the other fixtures.
+     */
+    private function programs(): void
+    {
+        $locations = Location::query()->pluck('id', 'name');
+        $at = fn (string $when) => CarbonImmutable::parse($when, self::TZ)->utc();
+
+        // [name, color, icon, status, starts, ends, place, sud, description, levels (first = the card's tag), participants]
+        $rows = [
+            ['Substance Use Recovery Program', 'green', 'sprout', 'active', '2025-01-15', null, 'Accra', true, 'Structured support for individuals recovering from substance use disorders.',
+                ['Level I – Outpatient', 'Level II – Intensive Outpatient', 'Level III – Residential'], 12],
+            ['Mental Health Wellness Program', 'purple', 'heart-pulse', 'active', '2025-02-01', null, 'Kumasi', false, 'Therapeutic support, life skills, and coping strategies for long-term wellness.',
+                ['Level II – Intensive Outpatient', 'Level I – Outpatient'], 8],
+            ['Teen Empowerment Program', 'blue', 'users', 'active', '2025-03-10', null, 'Accra', false, 'Building confidence, skills, and brighter futures for teens.',
+                ['Level III – Residential', 'Level II – Intensive Outpatient'], 15],
+            ['Life Skills Development', 'orange', 'sun', 'upcoming', '2025-05-05', '2025-07-30', 'Kumasi', false, 'Practical skills for independent living and personal growth.',
+                ['Level I – Outpatient'], 10],
+            ['Family Support Program', 'red', 'users-round', 'active', '2025-01-20', null, 'online', false, 'Support for families navigating recovery and healing.',
+                ['Level II – Intensive Outpatient'], 6],
+            ['Relapse Prevention Program', 'teal', 'flower-2', 'on_hold', '2024-11-15', '2025-04-30', 'Accra', false, 'Tools and strategies to prevent relapse and maintain progress.',
+                ['Level I – Outpatient'], 5],
+        ];
+
+        $people = Client::query()->where('status', ClientStatus::Active->value)->orderBy('client_number')->limit(30)->get();
+        $programs = [];
+        foreach ($rows as $i => [$name, $color, $icon, $status, $start, $end, $place, $sud, $description, $levels, $count]) {
+            $program = new \App\Models\Program(['name' => $name, 'description' => $description, 'color' => $color, 'icon' => $icon, 'starts_on' => $start, 'ends_on' => $end,
+                'location_id' => $place === 'online' ? null : $locations[$place], 'is_online' => $place === 'online']);
+            $program->forceFill(['status' => $status, 'is_sud_program' => $sud, 'created_at' => $at('2025-01-02 09:00')->addMinutes($i), 'updated_at' => $at('2025-01-02 09:00')->addMinutes($i)])->save();
+
+            $made = [];
+            foreach ($levels as $order => $levelName) {
+                $level = new \App\Models\LevelOfCare(['name' => $levelName, 'sort' => $order + 1, 'description' => null, 'eligibility' => null]);
+                $level->forceFill(['program_id' => $program->id, 'is_active' => true])->save();
+                $made[] = $level;
+            }
+
+            foreach ($people->take($count)->values() as $n => $client) {
+                $this->enroll($program, $client, $made[$n % count($made)] ?? null, $at('2025-02-03 09:00')->addDays($n), 'active');
+            }
+            $programs[$name] = $program;
+        }
+
+        // Four participants who completed the Mental Health program earlier (the "Completed" tile).
+        $mental = $programs['Mental Health Wellness Program'];
+        foreach ($people->slice(20, 4)->values() as $n => $client) {
+            $this->enroll($mental, $client, null, $at('2025-02-05 09:00'), 'completed', $at('2025-04-10 12:00')->addDays($n));
+        }
+
+        $staff = OrganizationMembership::query()->with('user:id,name')->get()->keyBy(fn ($m) => $m->user->name);
+        foreach ([['Mental Health Wellness Program', 'James Allen', 'director'], ['Mental Health Wellness Program', 'Lisa Morgan', 'clinician'],
+            ['Substance Use Recovery Program', 'Sarah Carter', 'director'], ['Teen Empowerment Program', 'Emily Johnson', 'coordinator']] as [$programName, $person, $role]) {
+            (new \App\Models\ProgramStaff)->forceFill(['program_id' => $programs[$programName]->id, 'membership_id' => $staff[$person]->id, 'role' => $role])->save();
+        }
+
+        $sessions = [
+            ['Group Therapy Session', 'Mental Health Wellness Program', '2025-04-28 10:00', '2025-04-28 11:00', 'Kumasi', 'James Allen'],
+            ['Life Skills Workshop', 'Teen Empowerment Program', '2025-04-29 14:00', '2025-04-29 16:00', 'Accra', 'Emily Johnson'],
+            ['Family Support Group', 'Family Support Program', '2025-04-30 11:00', '2025-04-30 12:30', 'online', 'Lisa Morgan'],
+            ['Group Therapy Session', 'Mental Health Wellness Program', '2025-04-21 10:00', '2025-04-21 11:00', 'Kumasi', 'James Allen'],
+            ['Life Skills Workshop', 'Teen Empowerment Program', '2025-04-22 14:00', '2025-04-22 16:00', 'Accra', 'Emily Johnson'],
+        ];
+        foreach ($sessions as [$title, $programName, $from, $to, $place, $facilitator]) {
+            $session = new \App\Models\ProgramSession;
+            $session->forceFill([
+                'program_id' => $programs[$programName]->id, 'title' => $title, 'starts_at' => $at($from), 'ends_at' => $at($to), 'timezone' => self::TZ,
+                'location_id' => $place === 'online' ? null : $locations[$place], 'is_online' => $place === 'online', 'facilitator_membership_id' => $staff[$facilitator]->id,
+            ])->save();
+
+            if ($at($from)->isPast()) {
+                foreach (\App\Models\ProgramEnrollment::query()->where('program_id', $session->program_id)->where('status', 'active')->get() as $n => $enrollment) {
+                    (new \App\Models\ProgramSessionAttendance)->forceFill([
+                        'program_id' => $session->program_id, 'session_id' => $session->id, 'enrollment_id' => $enrollment->id,
+                        'record_environment' => $enrollment->record_environment, 'status' => ['present', 'present', 'present', 'absent', 'excused'][$n % 5],
+                    ])->save();
+                }
+            }
+        }
+    }
+
+    private function enroll(\App\Models\Program $program, Client $client, ?\App\Models\LevelOfCare $level, CarbonImmutable $admitted, string $status, ?CarbonImmutable $ended = null): void
+    {
+        $enrollment = new \App\Models\ProgramEnrollment;
+        $enrollment->forceFill([
+            'record_environment' => $client->record_environment, 'client_id' => $client->id, 'program_id' => $program->id,
+            'current_level_id' => $level?->id, 'status' => $status, 'admitted_at' => $admitted, 'ended_at' => $ended,
+        ])->save();
+
+        $events = [[\App\Domain\Programs\EnrollmentEventType::Admitted, null, \App\Domain\Programs\EnrollmentStatus::Active, $admitted]];
+        if ($ended !== null) {
+            $events[] = [\App\Domain\Programs\EnrollmentEventType::Completed, \App\Domain\Programs\EnrollmentStatus::Active, \App\Domain\Programs\EnrollmentStatus::Completed, $ended];
+        }
+        foreach ($events as [$type, $from, $to, $when]) {
+            (new \App\Models\ProgramEnrollmentEvent)->forceFill([
+                'organization_id' => $enrollment->organization_id, 'record_environment' => $enrollment->record_environment, 'enrollment_id' => $enrollment->id,
+                'event_type' => $type, 'from_status' => $from, 'to_status' => $to, 'to_level_id' => $level?->id, 'occurred_at' => $when,
+            ])->save();
+        }
+    }
+
+    /**
+     * Telehealth comps 04/11/06: six telehealth sessions (Zoom links) and Emily Johnson's 28 Apr 10:00 session run
+     * through the real actions on a pinned clock — completed, with notes, a consented tiny WAV "recording" and an AI
+     * DRAFT transcript. The recording's displayed size/duration mimic the comp (the stored file is a few KB).
+     * Recording and AI settings are switched back off at the end, as a new organization would have them.
+     *
+     * @param  array<string, Client>  $clients
+     * @param  array<string, Service>  $services
+     * @param  array<string, OrganizationMembership>  $clinicians
+     * @param  array<string, Location>  $locations
+     */
+    private function telehealth(Organization $organization, array $clients, array $services, array $clinicians, array $locations, User $actor): void
+    {
+        $settings = app(SettingsService::class);
+        $settings->seedOrganization($organization, ['telehealth.recording_enabled' => true, 'telehealth.ai_transcripts_enabled' => true]);
+
+        $book = app(ScheduleAppointment::class);
+        $sessions = [];
+        foreach ([
+            ['2025-04-28', '10:00', 'Emily Johnson', 'Therapy Session', 'sarah', '84311220012'],
+            ['2025-04-29', '11:30', 'Michael Brown', 'Follow-up Consultation', 'james', '84311220013'],
+            ['2025-04-30', '14:00', 'Sophia Davis', 'Initial Assessment', 'lisa', '84311220014'],
+            ['2025-05-02', '09:00', 'James Wilson', 'Progress Review', 'emily', '84311220015'],
+            ['2025-05-06', '10:30', 'Olivia Martinez', 'Therapy Session', 'sarah', '84311220016'],
+            ['2025-05-07', '15:00', 'Daniel Thomas', 'Follow-up Consultation', 'james', '84311220017'],
+        ] as [$date, $time, $client, $service, $clinician, $meeting]) {
+            $appointment = $book(new ScheduleAppointmentData(
+                client: $clients[$client], service: $services[$service], clinician: $clinicians[$clinician],
+                modality: Modality::Telehealth, startsAt: CarbonImmutable::parse("{$date} {$time}", self::TZ), actor: $actor,
+            ));
+            $session = \App\Models\TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
+            app(\App\Domain\Telehealth\SetMeetingLink::class)($session, "https://zoom.us/j/{$meeting}", $actor);
+            $sessions[$client] = $session->refresh();
+        }
+
+        // Emily's follow-up (comp 06 "Next Steps": 5 May 2025, 10:00 AM), in person so the sessions list stays at six.
+        $book(new ScheduleAppointmentData(
+            client: $clients['Emily Johnson'], service: $services['Therapy Session'], clinician: $clinicians['sarah'],
+            modality: Modality::InPerson, startsAt: CarbonImmutable::parse('2025-05-05 10:00', self::TZ), location: $locations['Accra'], actor: $actor,
+        ));
+
+        $emily = $sessions['Emily Johnson'];
+        $previousNow = CarbonImmutable::getTestNow();
+        try {
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-04-28 10:00:00', 'UTC'));
+            app(\App\Domain\Telehealth\OpenSession::class)($emily, $actor);
+            app(\App\Domain\Telehealth\RecordConsent::class)($emily, true, $actor);
+            CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-04-28 11:00:00', 'UTC'));
+            app(\App\Domain\Telehealth\EndSession::class)($emily, $actor);
+            app(\App\Domain\Telehealth\SaveSessionNotes::class)($emily, 'Client discussed recent stressors and coping strategies. Reported improved mood compared to last session. Discussed homework and follow-up plan.', $actor);
+
+            $wav = tempnam(sys_get_temp_dir(), 'wav');
+            $samples = str_repeat("\x00\x00", 2000);
+            file_put_contents($wav, 'RIFF'.pack('V', 36 + strlen($samples)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, 8000, 16000, 2, 16).'data'.pack('V', strlen($samples)).$samples);
+            $recording = app(\App\Domain\Telehealth\AttachRecording::class)($emily, new \Illuminate\Http\UploadedFile($wav, 'session.wav', 'audio/wav', null, true), 3600, $actor);
+            @unlink($wav);
+            $recording->forceFill(['size_bytes' => 26004684])->save();
+
+            app(\App\Domain\Telehealth\AddTranscript::class)(
+                $emily,
+                "Clinician: How have you been since our last session?\nClient: A little better. The breathing exercises helped when work got stressful.\nClinician: That is good to hear. Let's plan some homework for the week ahead.",
+                \App\Domain\Telehealth\TranscriptSource::Ai,
+                $recording,
+                $actor,
+            );
+        } finally {
+            CarbonImmutable::setTestNow($previousNow);
+        }
+
+        $settings->seedOrganization($organization, ['telehealth.recording_enabled' => false, 'telehealth.ai_transcripts_enabled' => false]);
     }
 }

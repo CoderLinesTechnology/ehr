@@ -21,6 +21,8 @@ final class RoleTemplates
             'appointments.view', 'appointments.create', 'appointments.edit', 'appointments.cancel',
             'availability.manage_own', 'team.view',
             'messages.send', 'messages.client', 'resources.view',
+            'programs.view', 'programs.enroll',
+            'telehealth.join', 'telehealth.notes',
         ];
 
         return [
@@ -41,6 +43,8 @@ final class RoleTemplates
                     'organization.settings.manage', 'locations.manage', 'services.manage', 'team.view', 'team.manage',
                     'audit.view', 'demo.manage', 'reports.view',
                     'messages.send', 'messages.client', 'resources.view', 'resources.manage',
+                    'telehealth.manage',
+                    'programs.view', 'programs.manage', 'programs.enroll',
                 ],
             ],
             'clinician' => [
@@ -53,7 +57,7 @@ final class RoleTemplates
                 'name' => 'Clinical Supervisor',
                 'description' => 'Clinician who can see every client and appointment.',
                 'locked' => false,
-                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage'],
+                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage', 'programs.view_sud'],
             ],
             'receptionist' => [
                 'name' => 'Receptionist',

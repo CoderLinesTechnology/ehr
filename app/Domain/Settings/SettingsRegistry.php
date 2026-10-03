@@ -112,6 +112,18 @@ final class SettingsRegistry
             // ── Organization: clients ───────────────────────────────────────
             new SettingDefinition('clients.require_date_of_birth', $o, $T::TYPE_BOOL, false, 'clients', 'Require date of birth for new clients'),
             new SettingDefinition('clients.require_contact', $o, $T::TYPE_BOOL, true, 'clients', 'Require an email or phone number for new clients'),
+
+            // ── Organization: telehealth ────────────────────────────────────
+            new SettingDefinition('telehealth.default_link_secret', $o, $T::TYPE_SECRET, null, 'telehealth', 'Default meeting link',
+                help: 'An https Zoom, Google Meet or Microsoft Teams link used for telehealth appointments that have none of their own. Stored encrypted; WellNest only shows it to staff who may join the session.', nullable: true),
+            new SettingDefinition('telehealth.allowed_hosts', $o, $T::TYPE_TEXT, "zoom.us\n*.zoom.us\nmeet.google.com\nteams.microsoft.com", 'telehealth', 'Allowed meeting-link hosts',
+                help: 'One host per line; *.example.com allows its sub-domains. A meeting link on any other host is refused.'),
+            new SettingDefinition('telehealth.join_early_minutes', $o, $T::TYPE_INT, 15, 'telehealth', 'Join opens (minutes before the start)',
+                help: 'Staff can join a session from this long before it starts until it ends.', min: 0, max: 120),
+            new SettingDefinition('telehealth.recording_enabled', $o, $T::TYPE_BOOL, false, 'telehealth', 'Allow session recordings',
+                help: 'Off by default. Even when on, nothing is recorded or stored unless the client\'s consent is recorded for that session.'),
+            new SettingDefinition('telehealth.ai_transcripts_enabled', $o, $T::TYPE_BOOL, false, 'telehealth', 'Allow AI transcripts',
+                help: 'Off by default. An AI transcript is always a draft until a clinician reviews it. Turning this on needs an AI vendor agreement first.'),
         ];
 
         $map = [];

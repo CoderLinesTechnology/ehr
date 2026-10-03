@@ -24,6 +24,8 @@ final readonly class CalendarFilters
         public ?string $service = null,
         public ?AppointmentStatus $status = null,
         public ?Modality $modality = null,
+        /** 'all' = only program sessions; a program id = only that program's sessions; null = appointments and program sessions. */
+        public ?string $program = null,
     ) {}
 
     /** @param array<string, mixed> $query  $today: now, in the organization's timezone */
@@ -48,13 +50,14 @@ final readonly class CalendarFilters
             service: $uuid('service'),
             status: AppointmentStatus::tryFrom((string) $string('status')),
             modality: Modality::tryFrom((string) $string('modality')),
+            program: $string('program') === 'all' ? 'all' : $uuid('program'),
         );
     }
 
     public function isNarrowed(): bool
     {
         return $this->clinician !== null || $this->location !== null || $this->service !== null
-            || $this->status !== null || $this->modality !== null;
+            || $this->status !== null || $this->modality !== null || $this->program !== null;
     }
 
     /** Query parameters that reproduce these filters (empty ones left out). @return array<string, string> */
@@ -66,6 +69,7 @@ final readonly class CalendarFilters
             'service' => $this->service,
             'status' => $this->status?->value,
             'modality' => $this->modality?->value,
+            'program' => $this->program,
         ], fn ($v) => $v !== null);
     }
 

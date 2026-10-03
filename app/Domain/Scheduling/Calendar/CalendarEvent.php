@@ -23,6 +23,10 @@ final readonly class CalendarEvent
         public AppointmentStatus $status,
         public string $family,
         public string $zone,
+        /** 'appointment' (default) or 'program' (a program group session, read-only on the calendar). */
+        public string $kind = 'appointment',
+        /** Where the card links to; null = the appointment screen. */
+        public ?string $url = null,
     ) {}
 
     /** @param array<string, string|null> $colors clinician membership id => hex colour */

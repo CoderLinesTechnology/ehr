@@ -76,6 +76,17 @@ class AppServiceProvider extends ServiceProvider
             'message' => Models\Message::class,
             'message_reaction' => Models\MessageReaction::class,
             'message_attachment' => Models\MessageAttachment::class,
+            'telehealth_session' => Models\TelehealthSession::class,
+            'session_recording' => Models\SessionRecording::class,
+            'session_transcript' => Models\SessionTranscript::class,
+            'session_note' => Models\SessionNote::class,
+            'program' => Models\Program::class,
+            'level_of_care' => Models\LevelOfCare::class,
+            'program_staff' => Models\ProgramStaff::class,
+            'program_enrollment' => Models\ProgramEnrollment::class,
+            'program_enrollment_event' => Models\ProgramEnrollmentEvent::class,
+            'program_session' => Models\ProgramSession::class,
+            'program_session_attendance' => Models\ProgramSessionAttendance::class,
         ]);
 
         Paginator::defaultView('pagination.default');

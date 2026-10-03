@@ -8,7 +8,7 @@
             <div @class(['cal-month__day', 'is-outside' => ! $d['inMonth'], 'is-today' => $d['isToday']])>
                 <a href="{{ route('app.calendar.index', $filters->query(view: 'day', date: $d['date']->format('Y-m-d'))) }}" class="cal-month__num" aria-label="{{ $d['date']->format('l, F j') }}">{{ $d['date']->day }}</a>
                 @foreach ($d['events'] as $event)
-                    <a href="{{ route('app.appointments.show', ['appointment' => $event->id]) }}" @class(['cal-chip', 'cal-event--'.$event->family, 'is-closed' => $event->isClosed()]) title="{{ $event->clientName }} · {{ $event->serviceName }} · {{ $event->clinicianName }}">
+                    <a href="{{ $event->url ?? route('app.appointments.show', ['appointment' => $event->id]) }}" @class(['cal-chip', 'cal-event--'.$event->family, 'is-closed' => $event->isClosed()]) title="{{ $event->clientName }} · {{ $event->serviceName }} · {{ $event->clinicianName }}">
                         <span class="cal-chip__time">{{ fmt()->time($event->start, $event->zone) }}</span> <span class="cal-chip__name">{{ $event->clientName }}</span>
                     </a>
                 @endforeach

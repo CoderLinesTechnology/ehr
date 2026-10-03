@@ -3,6 +3,7 @@
 namespace App\Domain\Scheduling\Calendar;
 
 use App\Domain\Identity\PermissionResolver;
+use App\Domain\Programs\ProgramCalendar;
 use App\Domain\Scheduling\AppointmentStatus;
 use App\Domain\Settings\SettingsService;
 use App\Domain\Tenancy\TenantContext;
@@ -41,6 +42,7 @@ final class CalendarQuery
         private readonly TenantContext $tenant,
         private readonly PermissionResolver $permissions,
         private readonly SettingsService $settings,
+        private readonly ProgramCalendar $programs,
     ) {}
 
     public function membership(): OrganizationMembership
@@ -84,14 +86,16 @@ final class CalendarQuery
     /** @return Collection<int, CalendarEvent> */
     public function appointments(CalendarFilters $filters, CalendarRange $range): Collection
     {
-        $rows = $this->base($filters)
+        // A program filter asks for program sessions only; otherwise they are drawn beside the appointments (read-only).
+        $rows = $filters->program !== null ? new Collection : $this->base($filters)
             ->where('starts_at', '>=', $range->startsAt)
             ->where('starts_at', '<', $range->endsAt)
             ->orderBy('starts_at')->orderBy('id')
             ->limit(self::MAX_EVENTS)
             ->get();
 
-        return $this->present($rows);
+        return $this->present($rows)->concat($this->programs->events($filters, $range, $this->timezone()))
+            ->sortBy(fn (CalendarEvent $e) => [$e->start->getTimestamp(), $e->id])->values();
     }
 
     /** @return Collection<int, CalendarEvent> today's appointments (organization's local day of $now) */
