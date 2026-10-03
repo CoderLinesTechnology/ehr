@@ -4,50 +4,42 @@ namespace App\Http\Controllers\Platform;
 
 use App\Domain\Identity\PlatformRoles\GrantPlatformRole;
 use App\Domain\Identity\PlatformRoles\RevokePlatformRole;
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\Queries\PlatformUserQuery;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Platform\Concerns\AuthorizesPlatform;
 use App\Http\Requests\Platform\GrantPlatformRoleRequest;
 use App\Http\Requests\Platform\RevokePlatformRoleRequest;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /** Who holds platform roles: grant a role to an existing account by email, or take it away. */
 final class AdminController extends Controller
 {
-    public function index(Request $request): View
+    use AuthorizesPlatform;
+
+    public function index(Request $request, PlatformUserQuery $query): View
     {
-        Gate::authorize('platform.admins.manage');
-
-        $admins = User::query()
-            ->select(['users.id', 'users.name', 'users.email', 'users.status', 'users.two_factor_confirmed_at', 'users.last_login_at'])
-            ->whereExists(fn ($exists) => $exists
-                ->selectRaw('1')->from('platform_user_roles')->whereColumn('platform_user_roles.user_id', 'users.id'))
-            ->with('platformRoles:id,key,name')
-            ->orderBy('users.name')
-            ->limit(200)
-            ->get();
-
-        // Who granted each role: one lookup for the page, names only.
-        $grantorIds = $admins->flatMap(fn (User $admin) => $admin->platformRoles->pluck('pivot.granted_by_user_id'))->filter()->unique()->values()->all();
-        $grantors = $grantorIds === [] ? [] : User::query()->whereIn('id', $grantorIds)->pluck('name', 'id')->all();
+        $this->allow(PlatformAbility::ViewAdministrators);
 
         return view('platform.admins.index', [
-            'admins' => $admins,
-            'grantors' => $grantors,
+            'admins' => $query->administrators(),
             'roles' => Role::query()->platform()->orderBy('name')->get(['id', 'key', 'name', 'description']),
+            'me' => $request->user()->id,
             'timezone' => $request->user()->timezone,
         ]);
     }
 
     public function store(GrantPlatformRoleRequest $request, GrantPlatformRole $grant): RedirectResponse
     {
-        Gate::authorize('platform.admins.manage');
+        $this->allow(PlatformAbility::GrantPlatformRole);
 
         $target = User::query()->whereRaw('lower(email) = ?', [mb_strtolower($request->validated('email'))])->first();
+
         if ($target === null) {
             throw ValidationException::withMessages(['email' => 'No account uses that email address. They need to register and verify their email first.']);
         }
@@ -60,7 +52,7 @@ final class AdminController extends Controller
 
     public function destroy(RevokePlatformRoleRequest $request, User $user, string $role, RevokePlatformRole $revoke): RedirectResponse
     {
-        Gate::authorize('platform.admins.manage');
+        $this->allow(PlatformAbility::RevokePlatformRole);
 
         $revoke($user, $role, $request->user(), $request->validated('reason'));
 

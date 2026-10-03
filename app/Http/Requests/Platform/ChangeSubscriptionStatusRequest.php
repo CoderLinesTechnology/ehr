@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use App\Domain\Saas\SubscriptionStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\Validator;
@@ -13,7 +15,7 @@ final class ChangeSubscriptionStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.subscriptions.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::ChangeSubscriptionStatus);
     }
 
     /** @return array<string, array<int, mixed>> */

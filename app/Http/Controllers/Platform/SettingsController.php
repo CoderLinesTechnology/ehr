@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Domain\Platform\PlatformAbility;
 use App\Domain\Platform\UpdatePlatformSettings;
 use App\Domain\Settings\SettingDefinition;
 use App\Domain\Settings\SettingsRegistry;
 use App\Domain\Settings\SettingsService;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Platform\Concerns\AuthorizesPlatform;
 use App\Http\Requests\Platform\UpdateSettingsRequest;
 use App\Support\Regions;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
@@ -21,6 +22,8 @@ use Illuminate\View\View;
  */
 final class SettingsController extends Controller
 {
+    use AuthorizesPlatform;
+
     private const GROUP_TITLES = [
         'general' => ['Platform', 'Name, support contact and the announcement banner shown on every staff screen.'],
         'defaults' => ['Defaults for new organizations', 'Regional defaults offered when an organization is created.'],
@@ -31,7 +34,7 @@ final class SettingsController extends Controller
 
     public function edit(SettingsService $settings): View
     {
-        Gate::authorize('platform.settings.manage');
+        $this->allow(PlatformAbility::UpdatePlatformSettings);
 
         $groups = [];
         foreach (SettingsRegistry::forScope('platform') as $key => $definition) {
@@ -62,7 +65,7 @@ final class SettingsController extends Controller
 
     public function update(UpdateSettingsRequest $request, UpdatePlatformSettings $update): RedirectResponse
     {
-        Gate::authorize('platform.settings.manage');
+        $this->allow(PlatformAbility::UpdatePlatformSettings);
 
         $changed = $update($request->settingValues(), $request->validated('reason'), $request->user());
 

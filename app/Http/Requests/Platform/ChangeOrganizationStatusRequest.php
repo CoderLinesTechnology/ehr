@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Platform;
 
 use App\Domain\Platform\OrganizationStatus;
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,7 +18,7 @@ final class ChangeOrganizationStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.organizations.lifecycle') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::ChangeOrganizationStatus);
     }
 
     /** @return array<string, array<int, mixed>> */

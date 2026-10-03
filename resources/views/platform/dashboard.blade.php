@@ -14,7 +14,7 @@
     </x-ui.page-header>
 
     <div class="stack stack--lg">
-        <div class="grid-4">
+        <div class="grid-3">
             <x-ui.stat label="Organizations" :value="number_format($orgs['total'])" :hint="number_format($orgs['new_in_period']).' new in the last '.$days.' days'" icon="building" :href="route('platform.organizations.index')" />
             <x-ui.stat label="Users" :value="number_format($users['total'])" :hint="number_format($users['active_30d']).' signed in during the last 30 days · '.number_format($users['new_in_period']).' new in the last '.$days.' days'" icon="users" :href="route('platform.users.index')" />
             <x-ui.stat label="Active clients" :value="number_format($data['live_active_clients'])" hint="Live records across all organizations. Demo data is not counted." icon="user" />

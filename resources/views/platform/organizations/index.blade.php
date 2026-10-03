@@ -1,4 +1,5 @@
 <x-layouts.platform title="Organizations">
+    @include('platform.partials.assets')
     <x-ui.page-header title="Organizations" description="Every practice on the platform. Open one to manage its status, plan and entitlements.">
         <x-slot:actions>
             @can('platform.organizations.manage')
@@ -7,9 +8,9 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="stack">
+    <div class="pf-stack">
         <div class="cluster">
-            <x-ui.search-input name="q" placeholder="Search by name, address or email" :keep="['status', 'plan', 'sort', 'direction']" label="Search organizations" />
+            <x-ui.search-input name="q" :value="$filters['q']" placeholder="Search by name, address or email" :keep="['status', 'plan', 'sort', 'direction']" label="Search organizations" />
             <x-ui.filter-bar :action="route('platform.organizations.index')" label="Organization filters">
                 <input type="hidden" name="q" value="{{ $filters['q'] }}">
                 @if (request()->query('sort') && request()->query('direction'))
@@ -25,7 +26,7 @@
 
         <x-ui.card :padded="false">
             @if ($organizations->isEmpty())
-                <x-ui.empty-state icon="building" title="No organizations match" description="Try a different search or clear the filters.">
+                <x-ui.empty-state icon="building-2" title="No organizations match" description="Try a different search or clear the filters.">
                     <x-slot:actions>
                         <x-ui.button variant="secondary" :href="route('platform.organizations.index')">Clear filters</x-ui.button>
                     </x-slot:actions>
@@ -45,22 +46,22 @@
                         @foreach ($organizations as $organization)
                             <tr>
                                 <td>
-                                    <a href="{{ route('platform.organizations.show', $organization) }}" class="fw-medium">{{ $organization->name }}</a>
-                                    <div class="text-muted text-sm mono">{{ $organization->slug }}</div>
+                                    <a href="{{ route('platform.organizations.show', $organization->slug) }}" class="fw-medium">{{ $organization->name }}</a>
+                                    <span class="pf-cell-sub mono">{{ $organization->slug }}</span>
                                 </td>
                                 <td><x-ui.badge :tone="$organization->status->tone()">{{ $organization->status->label() }}</x-ui.badge></td>
                                 <td>
-                                    @if ($organization->liveSubscription)
-                                        {{ $organization->liveSubscription->plan->name }}
-                                        @if ($organization->liveSubscription->status !== \App\Domain\Saas\SubscriptionStatus::Active)
-                                            <div class="text-muted text-sm">{{ $organization->liveSubscription->status->label() }}</div>
+                                    @if ($organization->planName)
+                                        {{ $organization->planName }}
+                                        @if ($organization->subscriptionStatus !== \App\Domain\Saas\SubscriptionStatus::Active)
+                                            <span class="pf-cell-sub">{{ $organization->subscriptionStatus->label() }}</span>
                                         @endif
                                     @else
                                         <span class="text-muted">None</span>
                                     @endif
                                 </td>
-                                <td class="table__num tabular">{{ number_format($staffCounts[$organization->id] ?? 0) }}</td>
-                                <td class="tabular nowrap">{{ fmt()->localDate($organization->created_at, $timezone) }}</td>
+                                <td class="table__num tabular">{{ number_format($organization->staffCount) }}</td>
+                                <td class="tabular nowrap">{{ fmt()->localDate($organization->createdAt, $timezone) }}</td>
                             </tr>
                         @endforeach
                     </tbody>

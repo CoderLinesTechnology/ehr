@@ -3,92 +3,60 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Domain\Platform\OrganizationStatus;
-use App\Domain\Platform\OrganizationUsage;
+use App\Domain\Platform\PlatformAbility;
 use App\Domain\Platform\ProvisionOrganization;
+use App\Domain\Platform\Queries\OrganizationOverview;
+use App\Domain\Platform\Queries\PlatformOrganizationQuery;
 use App\Domain\Platform\UpdateOrganizationProfile;
-use App\Domain\Saas\EntitlementReport;
-use App\Domain\Saas\EntitlementService;
 use App\Domain\Saas\FeatureRegistry;
-use App\Domain\Saas\SubscriptionTransitions;
 use App\Domain\Settings\SettingsService;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Platform\Concerns\ReadsListQuery;
+use App\Http\Controllers\Platform\Concerns\AuthorizesPlatform;
 use App\Http\Requests\Platform\StoreOrganizationRequest;
 use App\Http\Requests\Platform\UpdateOrganizationRequest;
-use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\Plan;
-use App\Models\SubscriptionHistory;
 use App\Support\Regions;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /**
- * Organizations as the platform sees them: profile, lifecycle, plan and usage
- * COUNTS. Never a client, an appointment or any other tenant record.
+ * Organizations as the platform sees them: profile, lifecycle, plan, entitlements and usage
+ * COUNTS. Never a client, an appointment or any other tenant record. Reads go through
+ * PlatformOrganizationQuery / OrganizationOverview; rules live in the domain actions.
  */
 final class OrganizationController extends Controller
 {
-    use ReadsListQuery;
+    use AuthorizesPlatform;
 
-    private const SORTS = ['name', 'created_at'];
-
-    private const PER_PAGE = 25;
-
-    public function index(Request $request, OrganizationUsage $usage): View
+    public function index(Request $request, PlatformOrganizationQuery $query): View
     {
-        Gate::authorize('platform.organizations.view');
+        $this->allow(PlatformAbility::ViewOrganizations);
 
-        $term = $this->queryText($request, 'q');
-        $status = $this->queryChoice($request, 'status', OrganizationStatus::values());
-        $plans = Plan::query()->orderBy('sort')->orderBy('name')->get(['id', 'key', 'name']);
-        $planKey = $this->queryChoice($request, 'plan', [...$plans->pluck('key')->all(), 'none']);
-        $sort = $this->sortColumn($request, self::SORTS, 'created_at');
-        $direction = $this->sortDirection($request, $sort === 'name' ? 'asc' : 'desc');
-
-        $organizations = Organization::query()
-            // Only what the list shows: the page never needs the rest of the row.
-            ->select(['id', 'slug', 'name', 'status', 'email', 'created_at'])
-            ->with(['liveSubscription' => fn ($query) => $query
-                ->select(['id', 'organization_id', 'plan_id', 'status'])
-                ->with('plan:id,key,name')])
-            ->when($term !== '', function ($query) use ($term) {
-                $like = $this->containsPattern($term);
-                $query->where(fn ($match) => $match
-                    ->where('name', 'ilike', $like)
-                    ->orWhere('slug', 'ilike', $like)
-                    ->orWhere('email', 'ilike', $like));
-            })
-            ->when($status !== null, fn ($query) => $query->where('status', $status))
-            ->when($planKey === 'none', fn ($query) => $query->whereDoesntHave('liveSubscription'))
-            ->when($planKey !== null && $planKey !== 'none', function ($query) use ($plans, $planKey) {
-                $planId = $plans->firstWhere('key', $planKey)?->id;
-                $query->whereHas('liveSubscription', fn ($subscription) => $subscription->where('plan_id', $planId));
-            })
-            ->orderBy($sort, $direction)
-            ->orderBy('id', $direction)
-            ->paginate(self::PER_PAGE)
-            ->withQueryString();
+        $filters = $request->only(['q', 'status', 'plan', 'sort', 'direction']);
 
         return view('platform.organizations.index', [
-            'organizations' => $organizations,
-            'staffCounts' => $usage->staffCounts($organizations->pluck('id')->all()),
-            'plans' => $plans,
-            'filters' => ['q' => $term, 'status' => $status, 'plan' => $planKey],
+            'organizations' => $query->paginate($filters)->withQueryString(),
+            'plans' => Plan::query()->orderBy('sort')->orderBy('name')->get(['key', 'name']),
             'statuses' => OrganizationStatus::cases(),
+            'filters' => [
+                'q' => is_string($filters['q'] ?? null) ? $filters['q'] : '',
+                'status' => $filters['status'] ?? null,
+                'plan' => $filters['plan'] ?? null,
+            ],
             'timezone' => $request->user()->timezone,
         ]);
     }
 
     public function create(SettingsService $settings): View
     {
-        Gate::authorize('platform.organizations.manage');
+        $this->allow(PlatformAbility::CreateOrganization);
 
         return view('platform.organizations.create', [
-            'plans' => Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'key', 'name', 'price_minor', 'currency', 'billing_interval', 'trial_days']),
+            'plans' => $this->activePlans(),
             'defaults' => [
                 'country_code' => $settings->platform('platform.default_country'),
                 'timezone' => $settings->platform('platform.default_timezone'),
@@ -102,7 +70,7 @@ final class OrganizationController extends Controller
 
     public function store(StoreOrganizationRequest $request, ProvisionOrganization $provision): RedirectResponse
     {
-        Gate::authorize('platform.organizations.manage');
+        $this->allow(PlatformAbility::CreateOrganization);
 
         $data = $request->validated();
 
@@ -124,57 +92,21 @@ final class OrganizationController extends Controller
         );
     }
 
-    public function show(
-        Organization $organization,
-        OrganizationUsage $usage,
-        EntitlementReport $entitlements,
-        EntitlementService $entitlementService,
-        Request $request,
-    ): View {
-        Gate::authorize('platform.organizations.view');
-
-        $organization->load(['liveSubscription.plan']);
-        $subscription = $organization->liveSubscription;
-
-        $statusHistory = $organization->statusHistory()->with('actor:id,name')->limit(100)->get();
-
-        $subscriptionHistory = SubscriptionHistory::query()
-            ->where('organization_id', $organization->id)
-            ->with(['fromPlan:id,name', 'toPlan:id,name', 'actor:id,name'])
-            ->orderByDesc('occurred_at')
-            ->limit(50)
-            ->get();
-
-        $limits = [];
-        foreach ([FeatureRegistry::MAX_STAFF => 'staff', FeatureRegistry::MAX_ACTIVE_CLIENTS => 'clients', FeatureRegistry::MAX_LOCATIONS => 'locations'] as $key => $usageKey) {
-            $limits[$usageKey] = $entitlementService->limit($organization, $key);
-        }
+    public function show(Request $request, Organization $organization, OrganizationOverview $overview): View
+    {
+        $this->allow(PlatformAbility::ViewOrganizations);
 
         return view('platform.organizations.show', [
-            'organization' => $organization,
-            'subscription' => $subscription,
-            'statusHistory' => $statusHistory,
-            'subscriptionHistory' => $subscriptionHistory,
-            'entitlements' => $entitlements($organization),
-            'usage' => $usage($organization),
-            'limits' => $limits,
-            'plans' => Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'key', 'name', 'price_minor', 'currency', 'billing_interval', 'trial_days']),
-            'audit' => AuditLog::query()
-                ->platformVisible()
-                ->where('organization_id', $organization->id)
-                ->orderByDesc('occurred_at')
-                ->orderByDesc('id')
-                ->limit(10)
-                ->get(),
-            'statusTransitions' => $organization->status->allowedTransitions(),
-            'subscriptionTransitions' => $subscription !== null ? SubscriptionTransitions::allowed($subscription->status) : [],
+            'overview' => $overview($organization),
+            'plans' => $this->activePlans(),
+            'features' => collect(FeatureRegistry::definitions())->keyBy('key'),
             'timezone' => $request->user()->timezone,
         ]);
     }
 
     public function edit(Organization $organization): View
     {
-        Gate::authorize('platform.organizations.manage');
+        $this->allow(PlatformAbility::UpdateOrganization);
 
         return view('platform.organizations.edit', [
             'organization' => $organization,
@@ -186,11 +118,18 @@ final class OrganizationController extends Controller
 
     public function update(UpdateOrganizationRequest $request, Organization $organization, UpdateOrganizationProfile $update): RedirectResponse
     {
-        Gate::authorize('platform.organizations.manage');
+        $this->allow(PlatformAbility::UpdateOrganization);
 
         $update($organization, $request->validated());
 
         return redirect()->route('platform.organizations.show', $organization)
             ->with('success', "{$organization->name} was updated.");
+    }
+
+    /** @return Collection<int, Plan> */
+    private function activePlans()
+    {
+        return Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')
+            ->get(['id', 'key', 'name', 'price_minor', 'currency', 'billing_interval', 'trial_days']);
     }
 }

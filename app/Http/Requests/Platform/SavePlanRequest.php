@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use App\Domain\Saas\FeatureRegistry;
 use App\Models\Feature;
 use App\Support\Money;
@@ -14,7 +16,7 @@ final class SavePlanRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.plans.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::UpdatePlan);
     }
 
     /** @return array<string, array<int, mixed>> */

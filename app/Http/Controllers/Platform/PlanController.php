@@ -2,25 +2,28 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Domain\Platform\PlatformAbility;
 use App\Domain\Saas\FeatureRegistry;
 use App\Domain\Saas\SavePlan;
 use App\Domain\Saas\SubscriptionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Platform\Concerns\AuthorizesPlatform;
 use App\Http\Requests\Platform\SavePlanRequest;
 use App\Models\Plan;
 use App\Models\PlanFeature;
 use App\Support\Money;
 use App\Support\Regions;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 /** Plans and their feature matrix. Plans are never deleted: deactivate instead. */
 final class PlanController extends Controller
 {
+    use AuthorizesPlatform;
+
     public function index(): View
     {
-        Gate::authorize('platform.plans.manage');
+        $this->allow(PlatformAbility::UpdatePlan);
 
         return view('platform.plans.index', [
             'plans' => Plan::query()
@@ -33,7 +36,7 @@ final class PlanController extends Controller
 
     public function create(): View
     {
-        Gate::authorize('platform.plans.manage');
+        $this->allow(PlatformAbility::CreatePlan);
 
         return view('platform.plans.form', $this->formData(null, [
             'currency' => 'GHS', 'billing_interval' => 'month', 'trial_days' => 14, 'sort' => 10, 'is_public' => true, 'is_active' => true,
@@ -42,7 +45,7 @@ final class PlanController extends Controller
 
     public function store(SavePlanRequest $request, SavePlan $save): RedirectResponse
     {
-        Gate::authorize('platform.plans.manage');
+        $this->allow(PlatformAbility::CreatePlan);
 
         $plan = $save(null, $request->planAttributes(), $request->featureMatrix(), $request->limitMatrix(), $request->user());
 
@@ -51,7 +54,7 @@ final class PlanController extends Controller
 
     public function edit(Plan $plan): View
     {
-        Gate::authorize('platform.plans.manage');
+        $this->allow(PlatformAbility::UpdatePlan);
 
         $rows = PlanFeature::query()->where('plan_id', $plan->id)->get()->keyBy('feature_key');
 
@@ -70,7 +73,7 @@ final class PlanController extends Controller
 
     public function update(SavePlanRequest $request, Plan $plan, SavePlan $save): RedirectResponse
     {
-        Gate::authorize('platform.plans.manage');
+        $this->allow(PlatformAbility::UpdatePlan);
 
         $plan = $save($plan, $request->planAttributes(), $request->featureMatrix(), $request->limitMatrix(), $request->user());
 

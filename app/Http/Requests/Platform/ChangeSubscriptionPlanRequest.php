@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,7 +13,7 @@ final class ChangeSubscriptionPlanRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.subscriptions.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::ChangeSubscriptionPlan);
     }
 
     /** @return array<string, array<int, mixed>> */

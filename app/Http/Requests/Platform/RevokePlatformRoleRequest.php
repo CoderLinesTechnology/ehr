@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -10,7 +12,7 @@ final class RevokePlatformRoleRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.admins.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::RevokePlatformRole);
     }
 
     /** @return array<string, array<int, mixed>> */

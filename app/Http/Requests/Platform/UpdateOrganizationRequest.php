@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use App\Support\Regions;
 use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,7 +13,7 @@ final class UpdateOrganizationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.organizations.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::UpdateOrganization);
     }
 
     /** @return array<string, array<int, mixed>> */

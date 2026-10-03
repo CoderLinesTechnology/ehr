@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Domain\Platform\PlatformAbility;
+use App\Domain\Platform\PlatformAuthorizer;
 use App\Domain\Settings\SettingDefinition;
 use App\Domain\Settings\SettingsRegistry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,7 +21,7 @@ final class UpdateSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('platform.settings.manage') === true;
+        return app(PlatformAuthorizer::class)->can($this->user(), PlatformAbility::UpdatePlatformSettings);
     }
 
     /** @return array<string, array<int, mixed>> */

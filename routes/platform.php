@@ -113,7 +113,7 @@ Route::prefix('users')->name('users.')->group(function () {
         Route::get('{user}', [UserController::class, 'show'])->name('show');
     });
 
-    Route::middleware(['can:platform.admins.manage', 'password.confirm'])->group(function () {
+    Route::middleware(['can:platform.users.manage', 'password.confirm'])->group(function () {
         Route::post('{user}/disable', [UserController::class, 'disable'])->name('disable');
         Route::post('{user}/enable', [UserController::class, 'enable'])->name('enable');
     });

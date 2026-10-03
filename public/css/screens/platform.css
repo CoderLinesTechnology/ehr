@@ -1,0 +1,72 @@
+/* Super Admin console screens. Everything is scoped to .pf-* so nothing here restyles another screen.
+   Uses the shared components and tokens; this file only adds what the console needs on top. */
+
+.pf-stack { display: grid; gap: 18px; min-width: 0; }
+.pf-split { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 70rem) { .pf-split { grid-template-columns: minmax(0, 1fr) minmax(0, 340px); } }
+.pf-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: var(--color-text-muted); font-size: 13px; }
+.pf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pf-note { margin: 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
+.pf-note--pad { padding: 12px 24px 16px; }
+.pf-section { display: grid; gap: 14px; padding: 16px 24px 20px; border-top: 1px solid var(--border-row); }
+.pf-section:first-child { border-top: 0; }
+.pf-section__title { margin: 0; color: var(--color-text-heading); font-size: 14px; font-weight: 600; }
+.pf-cell-sub { display: block; margin-top: 2px; color: var(--color-text-caption); font-size: 12px; font-weight: 400; }
+.pf-reason { max-width: 36ch; color: var(--color-text-secondary); font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+.pf-arrow { color: var(--color-text-caption); }
+.pf-table-pad { padding: 0 0 4px; }
+
+/* Usage vs limits */
+.pf-usage { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.pf-usage__item { display: grid; gap: 8px; padding: 16px 18px; border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--bg-card, #fff); }
+.pf-usage__label { color: var(--color-text-secondary); font-size: 13px; font-weight: 500; }
+.pf-usage__value { color: var(--color-text-heading); font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pf-usage__limit { color: var(--color-text-caption); font-size: 13px; font-weight: 400; }
+.pf-usage__item--over { border-color: var(--alert-error-border); }
+.pf-usage__item--over .pf-usage__value { color: var(--color-danger-text); }
+
+/* Entitlement matrix */
+.pf-matrix td, .pf-matrix th { vertical-align: top; }
+.pf-matrix td { height: auto; padding-top: 12px; padding-bottom: 12px; }
+.pf-matrix__feature { min-width: 14rem; }
+.pf-matrix__name { color: var(--color-text-heading); font-weight: 500; }
+.pf-value { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.pf-override-note { display: block; margin-top: 4px; max-width: 30ch; color: var(--color-text-muted); font-size: 12px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+
+/* Forms */
+.pf-form { max-width: 56rem; }
+.pf-form--narrow { max-width: 40rem; }
+.pf-checks { display: grid; gap: 10px 24px; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.pf-limits { display: grid; gap: 16px 18px; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.pf-limit { display: grid; gap: 8px; align-content: start; }
+.pf-inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.pf-inline > .field { flex: 1 1 14rem; min-width: 0; }
+.pf-secret { display: flex; align-items: center; gap: 8px; }
+
+/* Audit entries */
+.pf-details { margin-top: 6px; }
+.pf-details > summary { cursor: pointer; color: var(--color-primary-text); font-size: 12px; font-weight: 500; }
+.pf-details > summary:focus-visible { outline: 0; box-shadow: var(--focus-ring); border-radius: 4px; }
+.pf-diff { display: grid; gap: 12px; margin-top: 8px; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.pf-diff h4 { margin: 0 0 4px; color: var(--color-text-caption); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.pf-diff pre { margin: 0; padding: 10px 12px; max-height: 14rem; overflow: auto; border-radius: 8px; background: #f6f9fe; color: var(--color-text-body); font-family: var(--font-mono); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pf-filters { display: grid; gap: 12px 14px; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); align-items: end; padding: 16px 24px; }
+.pf-filters__actions { display: flex; gap: 8px; }
+.pf-pager { display: flex; justify-content: space-between; gap: 12px; }
+
+/* Plans */
+.pf-plan-flag { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Administrators / roles */
+.pf-roles { display: grid; gap: 10px; }
+.pf-role { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.pf-role__text { min-width: 0; }
+.pf-grid-form { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); align-items: start; }
+
+@media (max-width: 40rem) {
+  .pf-section, .pf-filters, .pf-note--pad { padding-left: 16px; padding-right: 16px; }
+  .pf-reason { max-width: none; }
+}
+
+.table a.fw-medium { text-decoration: none; }
+.table a.fw-medium:hover { text-decoration: underline; }
