@@ -6,15 +6,17 @@ namespace App\Domain\Scheduling\Calendar;
  * Places the events of ONE day column on a vertical hour grid and puts overlapping ones side by
  * side. Pure arithmetic, so it is tested without a database.
  *
- * Positions are in pixels from the top of the body. Side-by-side lanes mean a REAL time overlap
- * (in a scheduling tool, two cards next to each other read as a double-booking). A card is drawn
- * at least $minHeight tall so its text lines fit, but never past the start of the next card in its
- * lane: back-to-back appointments stack, the earlier card clipped, rather than being squeezed
- * into columns as if they clashed.
+ * Positions are in pixels from the top of the body.
+ *  - Lanes (side by side) only for a REAL time overlap — in a scheduling tool, two cards next to
+ *    each other read as a double-booking.
+ *  - A card is drawn at least $minHeight tall so its text fits, but never into the next card that
+ *    shares its horizontal space: back-to-back appointments stack, the earlier one clipped.
+ *  - A card near the bottom edge is pulled up to stay whole, but never above the end of the
+ *    previous appointment in its lane.
  */
 final class EventLayout
 {
-    /** Vertical gap kept between a card and the next one in its lane. */
+    /** Vertical gap kept between a card and the next one that shares its space. */
     private const GAP = 2.0;
 
     /**
@@ -26,6 +28,7 @@ final class EventLayout
     {
         $perMinute = $rowHeight / 60;
         $bodyHeight = ($windowEndMin - $windowStartMin) * $perMinute;
+        $minHeight = min($minHeight, $bodyHeight);
         $items = [];
         $before = $after = 0;
 
@@ -42,29 +45,25 @@ final class EventLayout
             }
             $start = max($event['start'], $windowStartMin);
             $end = min(max($event['end'], $start + 1), $windowEndMin);
-            // A card near the bottom edge is pulled up so it stays whole.
-            $top = max(0.0, min(($start - $windowStartMin) * $perMinute, $bodyHeight - min($minHeight, $bodyHeight)));
             $items[] = [
                 'key' => $event['key'],
                 'start' => $start,
                 'end' => $end,
-                'top' => $top,
-                // Drawn extent before lane capping: at least the minimum height, inside the body.
-                'bottom' => min($bodyHeight, max($top + $minHeight, ($end - $windowStartMin) * $perMinute)),
+                'timeTop' => ($start - $windowStartMin) * $perMinute,
+                'timeBottom' => ($end - $windowStartMin) * $perMinute,
             ];
         }
 
         usort($items, fn ($a, $b) => [$a['start'], $a['end'], $a['key']] <=> [$b['start'], $b['end'], $b['key']]);
 
-        // Lanes and clusters by real time overlap.
-        $clusters = [];
-        $cluster = [];
+        // 1. Lanes and clusters by real time overlap.
+        $cluster = 0;
         $clusterEnd = PHP_INT_MIN;
         $laneEnds = [];
-        foreach ($items as $item) {
-            if ($item['start'] >= $clusterEnd && $cluster !== []) {
-                $clusters[] = $cluster;
-                $cluster = [];
+        $lanesInCluster = [];
+        foreach ($items as $i => $item) {
+            if ($item['start'] >= $clusterEnd) {
+                $cluster++;
                 $laneEnds = [];
             }
             $lane = 0;
@@ -72,51 +71,50 @@ final class EventLayout
                 $lane++;
             }
             $laneEnds[$lane] = $item['end'];
-            $clusterEnd = $cluster === [] ? $item['end'] : max($clusterEnd, $item['end']);
-            $cluster[] = $item + ['lane' => $lane];
-        }
-        if ($cluster !== []) {
-            $clusters[] = $cluster;
+            $clusterEnd = max($clusterEnd === PHP_INT_MIN ? $item['end'] : $clusterEnd, $item['end']);
+            $items[$i]['lane'] = $lane;
+            $items[$i]['cluster'] = $cluster;
+            $lanesInCluster[$cluster] = max($lanesInCluster[$cluster] ?? 0, $lane + 1);
         }
 
-        // A card never runs into the next card that will be drawn in the same horizontal space.
-        $placed = [];
-        $all = array_merge(...($clusters ?: [[]]));
-        foreach ($clusters as $members) {
-            $lanes = max(array_column($members, 'lane')) + 1;
-            foreach ($members as $item) {
-                $bottom = $item['bottom'];
-                foreach ($all as $other) {
-                    if ($other['key'] === $item['key'] || $other['top'] <= $item['top']) {
-                        continue;
-                    }
-                    $sharesSpace = $other['lane'] === $item['lane'] || ! self::sameCluster($clusters, $item['key'], $other['key']);
-                    if ($sharesSpace && $other['top'] < $bottom + self::GAP) {
-                        $bottom = max($item['top'] + 1, $other['top'] - self::GAP);
+        // Cards b after a share space when a full-width card meets anything, or within a cluster on the same lane.
+        $shares = fn (array $a, array $b): bool => $a['cluster'] !== $b['cluster'] || $a['lane'] === $b['lane'];
+
+        // 2. Tops: real start time, pulled up near the bottom edge but never above the
+        //    previous card's real end in the same space.
+        foreach ($items as $i => $item) {
+            $top = $item['timeTop'];
+            if ($top + $minHeight > $bodyHeight) {
+                $floor = 0.0;
+                for ($j = $i - 1; $j >= 0; $j--) {
+                    if ($shares($items[$j], $item)) {
+                        $floor = $items[$j]['timeBottom'] + self::GAP;
+                        break;
                     }
                 }
-                $placed[$item['key']] = [
-                    'top' => round($item['top'], 2),
-                    'height' => round($bottom - $item['top'], 2),
-                    'lane' => $item['lane'],
-                    'lanes' => $lanes,
-                ];
+                $top = max($floor, min($top, $bodyHeight - $minHeight));
             }
+            $items[$i]['top'] = $top;
+        }
+
+        // 3. Heights: at least the minimum, never into the next card sharing the space.
+        $placed = [];
+        foreach ($items as $i => $item) {
+            $bottom = min($bodyHeight, max($item['top'] + $minHeight, $item['timeBottom']));
+            for ($j = $i + 1, $n = count($items); $j < $n; $j++) {
+                if ($shares($item, $items[$j]) && $items[$j]['top'] < $bottom + self::GAP) {
+                    $bottom = max($item['top'] + 1, $items[$j]['top'] - self::GAP);
+                    break;
+                }
+            }
+            $placed[$item['key']] = [
+                'top' => round($item['top'], 2),
+                'height' => round($bottom - $item['top'], 2),
+                'lane' => $item['lane'],
+                'lanes' => $lanesInCluster[$item['cluster']],
+            ];
         }
 
         return ['placed' => $placed, 'before' => $before, 'after' => $after];
-    }
-
-    /** @param list<list<array{key: string}>> $clusters */
-    private static function sameCluster(array $clusters, string $a, string $b): bool
-    {
-        foreach ($clusters as $members) {
-            $keys = array_column($members, 'key');
-            if (in_array($a, $keys, true)) {
-                return in_array($b, $keys, true);
-            }
-        }
-
-        return false;
     }
 }

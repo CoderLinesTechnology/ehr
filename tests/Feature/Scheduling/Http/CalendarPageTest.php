@@ -169,6 +169,25 @@ class CalendarPageTest extends SchedulingHttpTestCase
     }
 
     #[Test]
+    public function a_late_card_pulled_up_at_the_bottom_never_covers_the_previous_appointment(): void
+    {
+        // 4–5 PM then 5:30 PM in a grid ending at 6 PM (the Monday column of the comp's week).
+        $layout = EventLayout::place([
+            ['key' => 'four', 'start' => 16 * 60, 'end' => 17 * 60],
+            ['key' => 'half5', 'start' => 17 * 60 + 30, 'end' => 18 * 60 + 30],
+        ], 8 * 60, 18 * 60, 38.5, 67.0);
+
+        $four = $layout['placed']['four'];
+        $late = $layout['placed']['half5'];
+
+        $this->assertSame(1, $four['lanes']);
+        $this->assertSame(308.0, $four['top']);
+        $this->assertGreaterThanOrEqual(38.5, $four['height']);          // its full hour stays visible
+        $this->assertGreaterThanOrEqual($four['top'] + $four['height'], $late['top']); // no overlap
+        $this->assertEqualsWithDelta(385.0, $late['top'] + $late['height'], 0.01);  // stays inside the grid
+    }
+
+    #[Test]
     public function events_outside_the_window_are_counted_not_drawn(): void
     {
         $layout = EventLayout::place([
