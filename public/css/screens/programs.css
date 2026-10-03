@@ -1,7 +1,7 @@
 /* Programs module (comp 03). Values: docs/design/spec/screens/03-programs.md. Loaded with @push('styles'); app.css stays untouched. */
 
-.pr { display: grid; gap: 16px; min-width: 0; }
-.pr-main { display: grid; align-content: start; gap: 0; min-width: 0; }
+.pr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.pr-main { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 0; min-width: 0; }
 
 /* ---- Wide layout: main column + the tinted rail panel that bleeds to the viewport edge --------------------------- */
 @media (min-width: 70rem) {
@@ -20,7 +20,7 @@
 /* ---- Header --------------------------------------------------------------------------------------------------- */
 .pr-head { display: flex; align-items: center; gap: 20px; min-height: 56px; margin: 0 6px 24px 0; }
 .pr-head__tile { display: grid; flex: none; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: #e8f1fd; color: #2a74f0; }
-.pr-head__text { min-width: 0; margin-right: auto; }
+.pr-head__text { flex: 1 1 12rem; min-width: 0; margin-right: auto; }
 .pr-head h1 { margin: 0; color: #04102c; font-size: 24px; font-weight: 600; line-height: 30px; }
 .pr-head p { margin: 4px 0 0; color: #4d6391; font-size: 12.5px; line-height: 17px; }
 .pr-create {
@@ -33,7 +33,7 @@
 
 /* ---- Tabs, search, filters ---------------------------------------------------------------------------------- */
 .pr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 0; margin: 0 6px 26px 0; }
-.pr-tabs { display: flex; flex: none; align-items: center; }
+.pr-tabs { position: relative; display: flex; flex: none; align-items: center; }
 .pr-tab {
   display: inline-flex; align-items: center; height: 37px; margin-left: -2px; padding: 0 17.6px; border: 1px solid #e9f0f9; border-radius: 999px;
   background: #fff; color: #1d2f53; font-size: 10.6px; font-weight: 500; line-height: 1; text-decoration: none; white-space: nowrap;
@@ -104,10 +104,9 @@
   color: #0a60f0; font-size: 11.5px; font-weight: 500; text-decoration: none;
 }
 .pr-view:hover { background: #e2eefd; color: #0a60f0; }
-.pr-kebab__btn { display: grid; place-items: center; width: 36px; height: 32px; border: 1px solid #f0f6fd; border-radius: 14px; background: #fff; color: #0861fb; cursor: pointer; }
-.pr-kebab > summary { padding: 0; }
-.pr-kebab > summary:hover, .pr-kebab[open] > summary { background: transparent; }
-.pr-kebab__btn:hover { background: #f3f8fe; }
+.pr-kebab > summary.btn { display: grid; place-items: center; width: 36px; height: 32px; min-height: 0; padding: 0; border: 1px solid #f0f6fd; border-radius: 14px; background: #fff; color: #0861fb; box-shadow: none; }
+.pr-kebab > summary.btn:hover, .pr-kebab[open] > summary.btn { background: #f3f8fe; color: #0861fb; }
+.pr-kebab > summary.btn:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
 .pr-pager { margin-top: 16px; }
 
 /* ---- Right rail: boxes ---------------------------------------------------------------------------------------- */
@@ -137,7 +136,7 @@
 .pr-quick a:hover { color: #1262e6; }
 .pr-quick a:focus-visible { outline: 0; box-shadow: var(--focus-ring); border-radius: 8px; }
 
-.pr-schedule { padding: 11px 16px 14px 17px; }
+.pr-schedule { padding: 11px 16px 27px 17px; }
 .pr-schedule header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 18px 1px; }
 .pr-schedule h2 { font-size: 13.2px; }
 .pr-schedule header a { color: #1f78f5; font-size: 9.7px; font-weight: 500; text-decoration: none; }
@@ -151,7 +150,7 @@
 .pr-session__dot--red { background: #f38a84; }
 :where(.pr-session) p { margin: 0; }
 .pr-session__title { color: #0a1a4a; font-size: 11.2px; font-weight: 600; line-height: 18px; }
-.pr-session__when { margin-top: 3px; color: #6a80a8; font-size: 10.8px; line-height: 17px; }
+.pr-session__when { margin-top: 3px; color: #6a80a8; font-size: 11.2px; line-height: 17px; }
 .pr-session__place { display: flex; align-items: center; gap: 7px; margin-top: 4.5px; color: #5d7da8; font-size: 10.4px; line-height: 15px; }
 .pr-session__place .icon { color: #46689a; }
 
@@ -165,6 +164,66 @@
   .pr-head { flex-wrap: wrap; }
   .pr-tabs { max-width: 100%; overflow-x: auto; }
   .pr-search { flex: 1 1 12rem; width: auto; margin-left: 0; }
-  .pr-filters { margin-left: 8px; }
-  .pr-bar { gap: 12px 8px; }
+  .pr-filters { margin-left: 8px; position: static; }
+  .pr-bar { position: relative; gap: 12px 8px; }
+  .pr-filters[open] > .pr-filters__menu { left: 0; right: 0; width: auto; max-width: none; }
+}
+
+/* ---- Other program screens (detail, forms, participant, session): the same language, in panels ---------------- */
+.pr--page { gap: 16px; align-content: start; }
+.pr--page .page-header { margin-bottom: 0; }
+.pr-metaline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; color: #4d6391; font-size: 12.5px; }
+.pr-metaline > span { display: inline-flex; align-items: center; gap: 6px; }
+.pr-metaline .pr-status { margin: 0; }
+.pr-panel { display: grid; gap: 14px; min-width: 0; padding: 18px 20px; border: 1px solid #ecf3fd; border-radius: 14px; background: #fefefe; box-shadow: 0 1px 3px rgba(40, 90, 170, .05); }
+.pr-panel__title { margin: 0; color: #04102c; font-size: 15px; font-weight: 600; line-height: 22px; }
+.pr-subtitle { margin: 0; color: #04102c; font-size: 13px; font-weight: 600; }
+.pr-panel p { margin: 0; }
+.pr-muted { color: #5d7096; font-size: 12.5px; }
+.pr-empty { margin: 0; padding: 8px 0; color: #5d7096; font-size: 13px; }
+.pr-note { margin: 0; color: #5d7096; font-size: 12.5px; }
+.pr-actions { text-align: right; white-space: nowrap; }
+.pr-actions a, .pr-linkbtn { color: #1262e6; font-size: 12.5px; font-weight: 500; text-decoration: none; }
+.pr-actions a:hover, .pr-linkbtn:hover { text-decoration: underline; }
+.pr-linkbtn { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
+.pr-pager { margin-top: 8px; }
+.pr-stats--row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pr-tile--sm { width: 36px; height: 36px; margin: 0; }
+.pr-tile--sm svg { fill: none !important; }
+
+.pr-form { display: grid; gap: 14px; min-width: 0; }
+.pr-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.pr-form__full { grid-column: 1 / -1; }
+.pr-form--row { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; }
+.pr-inline-search { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pr-inline-search > .input, .pr-inline-search > .select { flex: 0 1 18rem; width: auto; min-width: 0; }
+.pr-inline-search > .select { flex-basis: 11rem; }
+.pr-actionrow { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.pr-picklist, .pr-radiolist, .pr-levels, .pr-timeline { margin: 0; padding: 0; list-style: none; }
+.pr-picklist li + li, .pr-radiolist li + li { border-top: 1px solid #edf3fb; }
+.pr-picklist a { display: flex; align-items: center; gap: 14px; padding: 10px 4px; color: #0a1a4a; font-weight: 500; text-decoration: none; }
+.pr-picklist a > span:nth-child(2) { flex: 1; }
+.pr-picklist a:hover { color: #1262e6; }
+.pr-radiolist label { display: flex; align-items: center; gap: 12px; padding: 9px 4px; cursor: pointer; }
+.pr-radiolist small { color: #5d7096; }
+.pr-levels > li + li { border-top: 1px solid #edf3fb; }
+.pr-level-row { padding: 10px 0; }
+.pr-level-row > summary { display: flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 500; list-style: none; }
+.pr-level-row > summary::-webkit-details-marker { display: none; }
+.pr-level-row > summary .pr-level-row__name { flex: 1; }
+.pr-level-row[open] > summary { margin-bottom: 10px; }
+.pr-level-row .pr-form { margin-top: 10px; }
+
+.pr-timeline { display: grid; gap: 14px; border-left: 2px solid #e3ecf8; margin-left: 4px; }
+.pr-timeline li { position: relative; padding-left: 16px; }
+.pr-timeline li::before { content: ""; position: absolute; left: -6px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #4a90f0; box-shadow: 0 0 0 3px #fefefe; }
+.pr-timeline__title { color: #0a1a4a; font-size: 13px; font-weight: 600; }
+.pr-timeline__reason { margin-top: 4px !important; padding: 6px 10px; border-radius: 8px; background: #f3f8fe; color: #34507f; font-size: 12.5px; white-space: pre-line; }
+.pr-choices { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; }
+.pr-choices label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+
+@media (max-width: 47.999rem) {
+  .pr-stats--row, .pr-form__grid, .pr-form--row { grid-template-columns: minmax(0, 1fr); }
+  .pr-panel { padding: 16px; }
 }

@@ -60,6 +60,13 @@ final class TransitionEnrollment
 
             $from = $locked->status;
             $target = $to ?? $from;
+            // A request for the status the enrollment already has (a double click, a retried request) changes nothing:
+            // no history row, no audit entry.
+            if ($to !== null && $to === $from) {
+                $enrollment->setRawAttributes($locked->getAttributes(), true);
+
+                return $enrollment;
+            }
             if (! $from->isOpen()) {
                 throw new DomainException('This enrollment has ended. A returning client is admitted again as a new enrollment.', 'enrollment_closed');
             }

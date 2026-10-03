@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Domain\Identity\PermissionResolver;
-use App\Domain\Programs\ProgramVisibility;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\OrganizationMembership;
 use App\Models\Program;
@@ -60,18 +59,6 @@ final class ProgramPolicy
     public function admit(User $user, Program $program): Response
     {
         return $this->require($user, 'programs.enroll', $program->is_sud_program ? 'programs.view_sud' : null);
-    }
-
-    /** Open the participants of this program (segmentation rule). */
-    public function participants(User $user, Program $program): Response
-    {
-        $membership = $this->membership($user);
-
-        return match (true) {
-            $membership === null => Response::denyAsNotFound(),
-            ProgramVisibility::seesParticipantsOf($program, $membership) => Response::allow(),
-            default => Response::deny(),
-        };
     }
 
     private function require(User $user, ?string ...$permissions): Response

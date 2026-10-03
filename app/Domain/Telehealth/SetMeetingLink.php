@@ -27,6 +27,10 @@ final class SetMeetingLink
         $organization = $this->tenant->organizationOrFail();
         TenantGuard::assertOwned($organization->id, $session);
 
+        if (trim($url) === '') {
+            throw new DomainException('Enter the meeting link as one https address.', 'meeting_link_invalid', 'join_url');
+        }
+
         return DB::transaction(function () use ($organization, $session, $url, $actor) {
             /** @var TelehealthSession $locked */
             $locked = TelehealthSession::query()->lockForUpdate()->findOrFail($session->id);

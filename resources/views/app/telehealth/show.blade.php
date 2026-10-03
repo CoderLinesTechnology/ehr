@@ -62,7 +62,7 @@
             </section>
 
             <section class="ts-card ts-summary" aria-labelledby="ts-summary-title">
-                <h2 class="ts-card__title" id="ts-summary-title"><x-ui.icon name="file-text" :size="22" :stroke="1.8" />Session Summary</h2>
+                <h2 class="ts-card__title" id="ts-summary-title"><x-ui.icon name="file-text" :size="22" :stroke="2" />Session Summary</h2>
                 <div class="ts-summary__grid">
                     <dl class="ts-facts">
                         <div><dt>Session Type</dt><dd>{{ $details->serviceName }}</dd></div>
@@ -88,7 +88,7 @@
 
             @if ($showMedia)
                 <section class="ts-card ts-media" aria-labelledby="ts-media-title">
-                    <h2 class="ts-card__title" id="ts-media-title"><x-ui.icon name="video" :size="22" :stroke="1.8" />Recording &amp; Transcript
+                    <h2 class="ts-card__title" id="ts-media-title"><x-ui.icon name="video" :size="22" :stroke="2" />Recording &amp; Transcript
                         @if ($session->consent_to_record)<span class="ts-consent"><x-ui.icon name="shield-check" :size="12" :stroke="2.2" />Client consented to recording</span>@endif
                     </h2>
                     <ul class="ts-media__list">
@@ -126,7 +126,7 @@
             @endif
 
             <section class="ts-card ts-next" aria-labelledby="ts-next-title">
-                <h2 class="ts-card__title" id="ts-next-title"><x-ui.icon name="clipboard-check" :size="22" :stroke="1.8" />Next Steps</h2>
+                <h2 class="ts-card__title" id="ts-next-title"><x-ui.icon name="clipboard-check" :size="22" :stroke="2" />Next Steps</h2>
                 <div class="ts-next__box">
                     <span class="ts-next__tile"><x-ui.icon name="calendar" :size="20" :stroke="1.9" /></span>
                     <div class="ts-next__text">
@@ -152,21 +152,21 @@
             <section class="ts-card ts-details">
                 <h2 class="ts-card__title"><x-ui.icon name="calendar" :size="22" :stroke="1.9" />Session Details</h2>
                 <dl>
-                    <div><x-ui.icon name="clock" :size="22" :stroke="1.7" /><dt>Date &amp; Time</dt><dd>{{ $startsAt }} <i aria-hidden="true">•</i> {{ $range }}</dd></div>
-                    <div><x-ui.icon name="user" :size="22" :stroke="1.7" /><dt>Client</dt><dd>{{ $details->clientName }}</dd></div>
-                    <div><x-ui.icon name="user" :size="22" :stroke="1.7" /><dt>Provider</dt><dd>{{ $details->clinicianName }}</dd></div>
-                    <div><x-ui.icon name="calendar" :size="22" :stroke="1.7" /><dt>Service</dt><dd>{{ $details->serviceName }}</dd></div>
-                    <div><x-ui.icon name="map-pin" :size="22" :stroke="1.7" /><dt>Location</dt><dd>{{ $location }}</dd></div>
+                    <div><x-ui.icon name="clock" :size="22" :stroke="2" /><dt>Date &amp; Time</dt><dd>{{ $startsAt }} <i aria-hidden="true">•</i> {{ $range }}</dd></div>
+                    <div><x-ui.icon name="user" :size="22" :stroke="2" /><dt>Client</dt><dd>{{ $details->clientName }}</dd></div>
+                    <div><x-ui.icon name="user" :size="22" :stroke="2" /><dt>Provider</dt><dd>{{ $details->clinicianName }}</dd></div>
+                    <div><x-ui.icon name="calendar" :size="22" :stroke="2" /><dt>Service</dt><dd>{{ $details->serviceName }}</dd></div>
+                    <div><x-ui.icon name="map-pin" :size="22" :stroke="2" /><dt>Location</dt><dd>{{ $location }}</dd></div>
                 </dl>
             </section>
 
             <section class="ts-card ts-actions">
                 <h2 class="ts-card__title"><x-ui.icon name="settings" :size="22" :stroke="1.9" />Quick Actions</h2>
                 <ul>
-                    @if ($clientUrl)<li><a href="{{ $clientUrl }}"><x-ui.icon name="users" :size="22" :stroke="1.8" />View Client Record</a></li>@endif
-                    @if ($messageUrl)<li><a href="{{ $messageUrl }}"><x-ui.icon name="message-circle" :size="22" :stroke="1.8" />Send Message</a></li>@endif
-                    @if ($clinical)<li><a href="#ts-notes-field"><x-ui.icon name="square-pen" :size="22" :stroke="1.8" />Add Note</a></li>@endif
-                    @if ($tasksUrl)<li><a href="{{ $tasksUrl }}"><x-ui.icon name="square-check" :size="22" :stroke="1.8" />Create Task</a></li>@endif
+                    @if ($clientUrl)<li><a href="{{ $clientUrl }}"><x-ui.icon name="users" :size="22" :stroke="2" />View Client Record</a></li>@endif
+                    @if ($messageUrl)<li><a href="{{ $messageUrl }}"><x-ui.icon name="message-circle" :size="22" :stroke="2" />Send Message</a></li>@endif
+                    @if ($clinical)<li><a href="#ts-notes-field"><x-ui.icon name="square-pen" :size="22" :stroke="2" />Add Note</a></li>@endif
+                    @if ($tasksUrl)<li><a href="{{ $tasksUrl }}"><x-ui.icon name="square-check" :size="22" :stroke="2" />Create Task</a></li>@endif
                 </ul>
             </section>
 

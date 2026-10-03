@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Programs;
 
-use App\Domain\Programs\ProgramColor;
-use App\Domain\Programs\ProgramStatus;
 use App\Domain\Programs\StaffRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,5 +22,4 @@ final class AssignStaffRequest extends FormRequest
             'role' => ['required', 'string', Rule::in(StaffRole::values())],
         ];
     }
-
 }

@@ -77,8 +77,7 @@
                             @if (filled($program->description))<p class="pr-card__desc">{{ $program->description }}</p>@endif
                             <div class="pr-card__foot">
                                 <a href="{{ route('app.programs.show', ['program' => $program]) }}" class="pr-view">View Details</a>
-                                <x-ui.dropdown align="right" class="pr-kebab">
-                                    <x-slot:trigger><span class="pr-kebab__btn" role="button" aria-label="Actions for {{ $program->name }}"><x-ui.icon name="ellipsis" :size="18" /></span></x-slot:trigger>
+                                <x-ui.dropdown align="right" class="pr-kebab" icon="ellipsis" :label="'Actions for '.$program->name">
                                     <x-ui.dropdown-item :href="route('app.programs.show', ['program' => $program])" icon="eye">View details</x-ui.dropdown-item>
                                     @can('update', $program)<x-ui.dropdown-item :href="route('app.programs.edit', ['program' => $program])" icon="pencil">Edit program</x-ui.dropdown-item>@endcan
                                     @can('admit', $program)

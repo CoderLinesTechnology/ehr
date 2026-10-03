@@ -23,7 +23,7 @@
                 <x-ui.icon name="shield-check" :size="24" :stroke="1.9" />
                 <div>
                     <h2>Before you join</h2>
-                    <p>Please make sure you're in a quiet, private space and have a stable internet connection.</p>
+                    <p><span>Please make sure you're in a quiet, private space</span> <span>and have a stable internet connection.</span></p>
                 </div>
             </section>
             <section class="tj-card tj-help">

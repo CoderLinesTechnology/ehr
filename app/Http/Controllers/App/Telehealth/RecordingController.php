@@ -45,7 +45,6 @@ final class RecordingController extends Controller
             'Content-Type' => $recording->mime,
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
-            'Content-Security-Policy' => "default-src 'none'; sandbox",
         ]);
     }
 }

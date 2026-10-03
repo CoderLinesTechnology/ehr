@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\App\Programs;
 
 use App\Domain\Clients\ClientStatus;
+use App\Domain\Clients\ClientSearch;
 use App\Domain\Clients\ClientVisibility;
 use App\Domain\Programs\AdmitClient;
 use App\Domain\Programs\DischargeClient;
 use App\Domain\Programs\EnrollmentStatus;
+use App\Domain\Programs\ProgramDetail;
 use App\Domain\Programs\ProgramStatus;
 use App\Domain\Programs\PutEnrollmentOnHold;
 use App\Domain\Programs\ResumeEnrollment;
@@ -55,12 +57,10 @@ final class EnrollmentController extends Controller
         $clients = collect();
         if ($program !== null) {
             $membership = tenant()->membership();
-            $like = '%'.addcslashes(mb_strtolower($q), '\\%_').'%';
             $clients = ClientVisibility::apply(Client::query(), $membership)
                 ->whereIn('status', [ClientStatus::Active->value, ClientStatus::Pending->value])
                 ->whereNotIn('clients.id', ProgramEnrollment::query()->where('program_id', $program->id)->whereIn('status', EnrollmentStatus::OPEN)->select('client_id'))
-                ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(first_name) like ?', [$like])->orWhereRaw('lower(last_name) like ?', [$like])
-                    ->orWhereRaw("lower(coalesce(preferred_name, '')) like ?", [$like])))
+                ->when($q !== '', fn ($c) => ClientSearch::apply($c, $q))
                 ->select(['id', 'organization_id', 'client_number', 'first_name', 'last_name', 'preferred_name', 'record_environment'])
                 ->orderBy('last_name')->orderBy('first_name')->limit(20)->get();
         }
@@ -86,22 +86,32 @@ final class EnrollmentController extends Controller
         return redirect()->route('app.programs.show', ['program' => $program, 'tab' => 'participants'])->with('success', 'The client was admitted to the program.');
     }
 
-    public function show(Program $program, ProgramEnrollment $enrollment): View
+    public function show(Program $program, ProgramEnrollment $enrollment, ProgramDetail $detail): View
     {
         $enrollment->load(['client:id,organization_id,client_number,first_name,last_name,preferred_name,record_environment', 'level:id,organization_id,name',
             'events.fromLevel:id,organization_id,name', 'events.toLevel:id,organization_id,name', 'events.authorizedBy.user:id,name', 'events.actor:id,name']);
         $open = $enrollment->status->isOpen();
         $canManage = $open && Gate::allows('manage', $enrollment);
 
+        $targets = $canManage ? Program::query()->whereIn('status', [ProgramStatus::Upcoming->value, ProgramStatus::Active->value])->whereKeyNot($program->id)->orderBy('name')->limit(100)->get()
+            ->filter(fn (Program $p) => Gate::allows('admit', $p))->values() : collect();
+        $targetLevels = $targets->isEmpty() ? [] : LevelOfCare::query()->whereIn('program_id', $targets->pluck('id'))->where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'organization_id', 'program_id', 'name'])
+            ->groupBy('program_id')->map(fn ($rows) => $rows->pluck('name', 'id')->all())->all();
+        $levelOptions = [];
+        foreach ($targets as $target) {
+            if (isset($targetLevels[$target->id])) {
+                $levelOptions[$target->name] = $targetLevels[$target->id];
+            }
+        }
+
         return view('app.programs.enrollment', [
             'program' => $program,
             'enrollment' => $enrollment,
             'canManage' => $canManage,
             'levels' => $canManage ? LevelOfCare::query()->where('program_id', $program->id)->where('is_active', true)->orderBy('sort')->orderBy('name')->get(['id', 'organization_id', 'program_id', 'name']) : collect(),
-            'staff' => $canManage ? OrganizationMembership::query()->active()->with('user:id,name')->select(['id', 'organization_id', 'user_id', 'name_prefix'])->limit(200)->get()
-                ->filter(fn ($m) => app(\App\Domain\Identity\PermissionResolver::class)->membershipHas($m, 'programs.enroll'))->mapWithKeys(fn ($m) => [$m->id => $m->professionalName()])->all() : [],
-            'targets' => $canManage ? Program::query()->whereIn('status', [ProgramStatus::Upcoming->value, ProgramStatus::Active->value])->whereKeyNot($program->id)->orderBy('name')->limit(100)->get()
-                ->filter(fn (Program $p) => Gate::allows('admit', $p))->values() : collect(),
+            'staff' => $canManage ? $detail->authorizers() : [],
+            'targets' => $targets,
+            'levelOptions' => $levelOptions,
         ]);
     }
 

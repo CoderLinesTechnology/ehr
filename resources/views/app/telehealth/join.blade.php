@@ -106,7 +106,7 @@
                 <x-ui.icon name="shield-check" :size="24" :stroke="1.9" />
                 <div>
                     <h2>Before you join</h2>
-                    <p>Please make sure you're in a quiet, private space and have a stable internet connection.</p>
+                    <p><span>Please make sure you're in a quiet, private space</span> <span>and have a stable internet connection.</span></p>
                 </div>
             </section>
 
@@ -114,7 +114,7 @@
                 <span class="tj-help__q" aria-hidden="true">?</span>
                 <div>
                     <h2>Need Help?</h2>
-                    <p>If you're having trouble joining, contact support or try refreshing this page.</p>
+                    <p><span>If you're having trouble joining, contact support</span> <span>or try refreshing this page.</span></p>
                     @if ($supportEmail !== null)
                         <a href="mailto:{{ $supportEmail }}" class="tj-help__btn"><x-ui.icon name="headset" :size="19" :stroke="1.9" />Contact Support</a>
                     @endif
@@ -125,7 +125,7 @@
                 <x-ui.logo :mark="true" :size="30" class="tj-thanks__mark" />
                 <div>
                     <h2>You're making a difference</h2>
-                    <p>Thank you for being part of your client's journey to better health.</p>
+                    <p><span>Thank you for being part of your client's</span> <span>journey to better health.</span></p>
                 </div>
             </section>
         </aside>

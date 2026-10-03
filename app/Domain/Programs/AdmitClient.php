@@ -11,6 +11,7 @@ use App\Models\Client;
 use App\Models\LevelOfCare;
 use App\Models\Program;
 use App\Models\ProgramEnrollment;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -46,8 +47,10 @@ final class AdmitClient
             $locked = Program::query()->whereKey($program->id)->lockForUpdate()->firstOrFail();
             $this->enrollments->assertCanEnrollIn($locked);
 
+            // The client as the database has it now (the caller's instance may be stale or hold only the columns it wrote).
+            $client = Client::query()->whereKey($client->id)->firstOrFail();
             if (! ClientVisibility::allows($client, $this->guard->actor())) {
-                throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(Client::class, [$client->getKey()]);
+                throw (new ModelNotFoundException)->setModel(Client::class, [$client->getKey()]);
             }
             if (! in_array($locked->status, [ProgramStatus::Upcoming, ProgramStatus::Active], true)) {
                 throw new DomainException('Only programs that are upcoming or active admit new participants.', 'program_closed', 'program_id');

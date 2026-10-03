@@ -57,7 +57,7 @@ final class RoleTemplates
                 'name' => 'Clinical Supervisor',
                 'description' => 'Clinician who can see every client and appointment.',
                 'locked' => false,
-                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage', 'programs.view_sud'],
+                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage'],
             ],
             'receptionist' => [
                 'name' => 'Receptionist',

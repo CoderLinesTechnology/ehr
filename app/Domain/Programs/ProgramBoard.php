@@ -4,13 +4,12 @@ namespace App\Domain\Programs;
 
 use App\Domain\Tenancy\TenantContext;
 use App\Models\LevelOfCare;
-use App\Models\OrganizationMembership;
 use App\Models\Program;
 use App\Models\ProgramEnrollment;
 use App\Models\ProgramSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\Paginator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Read model of the programs overview (comp 03): the status tabs with their counts, the program cards with
@@ -68,9 +67,10 @@ final class ProgramBoard
             ->orderBy('sort')->orderBy('name')->get(['id', 'organization_id', 'program_id', 'name'])
             ->unique('program_id')->keyBy('program_id');
 
-        // program id => [status => n], live enrollments the member may know about (segmentation applied).
+        // program id => [status => n], live active/completed enrollments the member may know about (segmentation applied):
+        // an index-only scan, however long the ended history of the organization is.
         $people = ProgramVisibility::countable(ProgramEnrollment::query(), $membership)
-            ->where('record_environment', 'live')
+            ->where('record_environment', 'live')->whereIn('status', [EnrollmentStatus::Active->value, EnrollmentStatus::Completed->value])
             ->selectRaw('program_id, status, count(*) as total')->groupBy('program_id', 'status')->get();
         $byProgram = [];
         $completed = 0;
@@ -114,8 +114,8 @@ final class ProgramBoard
         ];
     }
 
-    /** @return \Illuminate\Database\Eloquent\Builder<ProgramSession> sessions that have not started yet, of open programs, soonest first */
-    private function upcomingSessions(): \Illuminate\Database\Eloquent\Builder
+    /** @return Builder<ProgramSession> sessions that have not started yet, of open programs, soonest first */
+    private function upcomingSessions(): Builder
     {
         return ProgramSession::query()
             ->with(['location:id,organization_id,name', 'program:id,organization_id,name'])

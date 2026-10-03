@@ -10,6 +10,7 @@ use App\Models\Location;
 use App\Models\Program;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Creates (as Upcoming) or edits a program of the current organization.
@@ -124,7 +125,7 @@ final class SaveProgram
         $online = $place === 'online';
         $locationId = null;
         if ($place !== '' && ! $online) {
-            $locationId = \Illuminate\Support\Str::isUuid($place) ? Location::query()->active()->whereKey($place)->value('id') : null;
+            $locationId = Str::isUuid($place) ? Location::query()->active()->whereKey($place)->value('id') : null;
             if ($locationId === null) {
                 throw new DomainException('Choose one of your locations, or Online.', 'place', 'place');
             }

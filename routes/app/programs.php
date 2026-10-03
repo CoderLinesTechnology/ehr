@@ -6,7 +6,6 @@ use App\Http\Controllers\App\Programs\ProgramController;
 use App\Http\Controllers\App\Programs\SessionController;
 use App\Http\Controllers\App\Programs\StaffController;
 use App\Models\Program;
-use App\Models\ProgramEnrollment;
 use Illuminate\Support\Facades\Route;
 
 // Staff application: programs and levels of care. Loaded inside the /o/{organization} group (middleware: auth,
@@ -67,4 +66,6 @@ Route::prefix('programs')->name('programs.')->middleware('feature:programs')->gr
 });
 
 // TEMP-STUB-REMOVE
-if (env('PROG_STUB')) { Route::get('reports', fn () => 'reports')->name('reports.index'); }
+if (env('PROG_STUB')) {
+    Route::get('reports', fn () => 'reports')->name('reports.index');
+}

@@ -10,10 +10,10 @@ use App\Domain\Scheduling\Calendar\CalendarFilters;
 use App\Domain\Scheduling\Calendar\CalendarRange;
 use App\Domain\Scheduling\Modality;
 use App\Domain\Tenancy\TenantContext;
+use App\Models\Program;
 use App\Models\ProgramSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Route;
 
 /**
  * Program group sessions as calendar events (read-only there). The central calendar calls this and merges the result
@@ -54,7 +54,7 @@ final class ProgramCalendar
             ->with(['program:id,organization_id,name,color,status', 'location:id,organization_id,name', 'facilitator:id,organization_id,user_id,name_prefix', 'facilitator.user:id,name'])
             ->whereNull('cancelled_at')
             ->where('starts_at', '>=', $range->startsAt)->where('starts_at', '<', $range->endsAt)
-            ->whereIn('program_id', \App\Models\Program::query()->where('status', '!=', ProgramStatus::Archived->value)->select('programs.id'))
+            ->whereIn('program_id', Program::query()->where('status', '!=', ProgramStatus::Archived->value)->select('programs.id'))
             ->when($filters->program !== null && $filters->program !== 'all', fn ($q) => $q->where('program_id', $filters->program))
             ->when($filters->clinician, fn ($q, $id) => $q->where('facilitator_membership_id', $id))
             ->when($filters->location, fn ($q, $id) => $q->where('location_id', $id))
@@ -62,9 +62,7 @@ final class ProgramCalendar
             ->orderBy('starts_at')->orderBy('id')
             ->limit(self::MAX_EVENTS)->get();
 
-        $link = Route::has('app.programs.sessions.show');
-
-        return $sessions->map(function (ProgramSession $s) use ($timezone, $link) {
+        return $sessions->map(function (ProgramSession $s) use ($timezone) {
             $local = fn ($instant) => CarbonImmutable::instance($instant)->setTimezone($timezone);
 
             return new CalendarEvent(
@@ -81,7 +79,7 @@ final class ProgramCalendar
                 family: self::FAMILY[$s->program->color->value] ?? 'blue',
                 zone: $timezone,
                 kind: 'program',
-                url: $link ? route('app.programs.sessions.show', ['program' => $s->program_id, 'session' => $s->id]) : null,
+                programId: $s->program_id,
             );
         })->values();
     }

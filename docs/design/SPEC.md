@@ -13,8 +13,12 @@ other, the decisions below say which wins. Measured values live in:
 | [`spec/screens/01-appointments.md`](spec/screens/01-appointments.md) | Appointments (calendar week view, today's table, right rail) |
 | [`spec/screens/02-settings-organization.md`](spec/screens/02-settings-organization.md) | Settings → Organization |
 | [`spec/screens/09-resources.md`](spec/screens/09-resources.md) | Resources |
+| [`spec/screens/04-telehealth.md`](spec/screens/04-telehealth.md) | Telehealth sessions list |
+| [`spec/screens/11-telehealth-join.md`](spec/screens/11-telehealth-join.md) | Telehealth join / device check |
+| [`spec/screens/06-telehealth-session-completed.md`](spec/screens/06-telehealth-session-completed.md) | Telehealth session completed (comp is 1224x1285) |
+| [`spec/screens/03-programs.md`](spec/screens/03-programs.md) | Programs overview (cards, overview tiles, quick actions, schedule) |
 
-Not yet measured (measure when the module is built): 03 Programs, 04/11/06 Telehealth, 07 Messages, 09 Resources.
+Not yet measured (measure when the module is built): 07 Messages.
 
 ## Brand
 WellNest — "Better Care. Healthier Tomorrows." Font **Inter** (self-hosted, `public/fonts/inter`). Icons **Lucide**
