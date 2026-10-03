@@ -312,6 +312,12 @@
     }
 
     window.addEventListener('resize', function () { if (floating) { place(); } });
+    // The window is placed from its own size. When that size settles — leaving full screen can take a few frames, so
+    // the requestAnimationFrame above sometimes still sees the full-screen size and puts it at the left edge — place it
+    // again. Moving it (a transform) never changes the observed size, so this cannot loop.
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { if (floating && document.fullscreenElement !== dock) { place(); } }).observe(dock);
+    }
 
     window.addEventListener('beforeunload', function (event) {
       if (!guard || host.hasAttribute('data-call-leaving')) { return undefined; }
