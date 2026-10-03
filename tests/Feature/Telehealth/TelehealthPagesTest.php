@@ -12,7 +12,6 @@ use App\Domain\Telehealth\AddTranscript;
 use App\Domain\Telehealth\EndSession;
 use App\Domain\Telehealth\OpenSession;
 use App\Domain\Telehealth\SaveSessionNotes;
-use App\Domain\Telehealth\SetMeetingLink;
 use App\Domain\Telehealth\TranscriptSource;
 use App\Models\Appointment;
 use App\Models\OrganizationMembership;
@@ -136,7 +135,7 @@ class TelehealthPagesTest extends TelehealthTestCase
     {
         $soon = $this->sessionAt('2026-10-02 08:10:00', $this->drA, $this->clientA);   // 10 minutes away: Join
         $later = $this->sessionAt('2026-10-02 10:00:00', $this->drA, $this->clientB);  // two hours away: View
-        $other = $this->sessionAt('2026-10-02 14:00:00', $this->drB, $this->clientB, link: null);
+        $other = $this->sessionAt('2026-10-02 14:00:00', $this->drB, $this->clientB, room: false);
 
         $html = $this->as($this->drA)->get($this->url('app.telehealth.index'))->assertOk()->getContent();
 
@@ -145,10 +144,10 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString($this->joinUrl($soon), $html);
         $this->assertStringNotContainsString($this->joinUrl($later), $html, 'a session that is not yet joinable has no Join link');
 
-        // The right rail's "Join Session" leads to the next session; the page never hands out meeting links.
+        // The right rail's "Join Session" leads to the next session; the page never hands out room links.
         $this->assertStringContainsString('Ready for your session?', $html);
-        $this->assertStringNotContainsString('Secret123', $html);
-        $this->assertStringNotContainsString('zoom.us', $html);
+        $this->assertStringNotContainsString('daily.co', $html);
+        $this->assertStringNotContainsString((string) $soon->provider_room_name, $html);
     }
 
     // ── tenant isolation ─────────────────────────────────────────────────────
@@ -156,18 +155,14 @@ class TelehealthPagesTest extends TelehealthTestCase
     #[Test]
     public function another_organizations_session_recording_and_transcript_ids_are_not_found(): void
     {
-        $foreign = $this->inTenant($this->other, function () {
-            $session = TelehealthSession::query()->where('appointment_id', $this->otherAppointment->id)->firstOrFail();
-            app(SetMeetingLink::class)($session, 'https://zoom.us/j/999', null);
-
-            return $session;
-        });
+        $foreign = $this->inTenant($this->other, fn () => TelehealthSession::query()->where('appointment_id', $this->otherAppointment->id)->firstOrFail());
         $mine = $this->sessionAt('2026-10-06 10:00:00');
         $recording = $this->recordingFor($mine);
 
         $this->actingAs($this->actor)->get($this->url('app.telehealth.show', ['session' => $foreign->id]))->assertNotFound();
         $this->get($this->joinUrl($foreign))->assertNotFound();
         $this->post($this->url('app.telehealth.start', ['session' => $foreign->id]))->assertNotFound();
+        $this->get($this->callUrl($foreign))->assertNotFound();
         $this->put($this->url('app.telehealth.notes.update', ['session' => $foreign->id]), ['notes' => 'x'])->assertNotFound();
         $this->put($this->url('app.telehealth.consent', ['session' => $foreign->id]), ['consent' => 1])->assertNotFound();
         $this->get($this->url('app.telehealth.recordings.download', ['session' => $foreign->id, 'recording' => $recording->id]))->assertNotFound();
@@ -197,12 +192,17 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString('Alice Alpha', $html);
         $this->assertStringContainsString('Oct 2, 2026', $html);
         $this->assertStringContainsString('8:05 AM – 9:05 AM', $html);
-        $this->assertStringContainsString('Zoom Meeting', $html);
+        $this->assertStringContainsString('Daily Meeting', $html);
+        $this->assertStringContainsString('Telehealth (Daily)', $html);
         $this->assertStringContainsString('Ready to join?', $html);
         $this->assertStringContainsString('<p class="tj-head__text">Your session is ready. Click the button below to join.</p>', $html);
         $this->assertStringContainsString('data-telehealth-preview', $html);
-        $this->assertStringContainsString('<a href="'.e(self::LINK).'" target="_blank" rel="noopener noreferrer" class="tj-join"', $html);
-        $this->assertStringContainsString('data-url="'.e(self::LINK).'"', $html);
+        // Join is a POST to start (no link to the room in a new tab); Copy hands out the room's own link — the client link.
+        $this->assertStringContainsString('<form method="POST" action="'.e($this->url('app.telehealth.start', ['session' => $session->id])).'" class="tj-join-form"', $html);
+        $this->assertStringNotContainsString('target="_blank"', $html);
+        $this->assertStringContainsString('data-url="'.e($session->join_url).'"', $html);
+        $this->assertStringStartsWith('https://wellnest-dev.daily.co/', (string) $session->join_url);
+        $this->assertStringContainsString('Clients who open this link wait in the lobby until you admit them.', $html);
         $this->assertStringNotContainsString('<script>', str_replace('<script src=', '', $html), 'no inline script');
         $response->assertSee('js/screens/telehealth.js', false);
     }
@@ -218,24 +218,8 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString('You can join from', $html);
         $this->assertStringContainsString('<p class="tj-head__text">You can join from', $html, 'the headline says when it opens too');
         $this->assertStringNotContainsString('Your session is ready', $html);
-        $this->assertStringNotContainsString('target="_blank"', $html);
-    }
-
-    #[Test]
-    public function a_session_without_a_link_asks_for_one_and_a_bad_link_is_refused_with_a_message(): void
-    {
-        $session = $this->sessionAt('2026-10-02 08:05:00', link: null);
-
-        $this->as($this->drA)->get($this->joinUrl($session))->assertOk()->assertSee('Paste the Zoom, Google Meet or Microsoft Teams link', false)->assertSee('Save link')
-            ->assertSee('Add the meeting link below to get this session ready.')->assertDontSee('Your session is ready');
-
-        $this->put($this->url('app.telehealth.link', ['session' => $session->id]), ['join_url' => 'http://zoom.us/j/1'])
-            ->assertSessionHasErrors('join_url');
-        $this->assertNull($session->refresh()->join_url);
-
-        $this->put($this->url('app.telehealth.link', ['session' => $session->id]), ['join_url' => 'https://meet.google.com/abc-defg-hij'])
-            ->assertRedirect($this->joinUrl($session));
-        $this->assertSame('https://meet.google.com/abc-defg-hij', $session->refresh()->join_url);
+        $this->assertStringNotContainsString('class="tj-join-form"', $html);
+        $this->assertStringContainsString('Copy Meeting Link', $html, 'the client link can be sent ahead of time');
     }
 
     #[Test]
@@ -244,7 +228,8 @@ class TelehealthPagesTest extends TelehealthTestCase
         $inside = $this->sessionAt('2026-10-02 08:05:00');
         $outside = $this->sessionAt('2026-10-02 12:00:00', $this->drA, $this->clientB);
 
-        $this->as($this->drA)->postJson($this->url('app.telehealth.start', ['session' => $inside->id]))->assertOk()->assertJson(['status' => 'in_progress']);
+        $this->as($this->drA)->postJson($this->url('app.telehealth.start', ['session' => $inside->id]))->assertOk()
+            ->assertJson(['status' => 'in_progress', 'call' => $this->callUrl($inside)]);
         $this->assertSame('in_progress', $inside->refresh()->status->value);
 
         $this->postJson($this->url('app.telehealth.start', ['session' => $outside->id]))->assertStatus(422)->assertJson(['code' => 'outside_join_window']);
@@ -305,7 +290,8 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString('Generated from recording', $html);
         $this->assertStringContainsString('A follow-up session is scheduled for Oct 9, 2026 at 10:00 AM.', $html);
         $this->assertStringNotContainsString('Clinician: Hello', $html, 'the transcript text is on its own page');
-        $this->assertStringNotContainsString('Secret123', $html);
+        $this->assertStringContainsString('Telehealth (Daily)', $html);
+        $this->assertStringNotContainsString('daily.co', $html, 'a finished session never shows its room link');
     }
 
     #[Test]

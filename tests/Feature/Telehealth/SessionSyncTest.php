@@ -13,8 +13,8 @@ use App\Domain\Shared\RecordEnvironment;
 use App\Domain\Telehealth\EndSession;
 use App\Domain\Telehealth\EnsureTelehealthSession;
 use App\Domain\Telehealth\OpenSession;
+use App\Domain\Telehealth\PrepareRoom;
 use App\Domain\Telehealth\SessionStatus;
-use App\Domain\Telehealth\SetMeetingLink;
 use App\Domain\Telehealth\SyncTelehealthSession;
 use App\Models\Appointment;
 use App\Models\Client;
@@ -37,9 +37,11 @@ class SessionSyncTest extends TelehealthTestCase
         $this->assertSame(SessionStatus::Scheduled, $session->status);
         $this->assertSame($appointment->client_id, $session->client_id);
         $this->assertSame($this->drA->id, $session->clinician_membership_id);
-        $this->assertSame('external_link', $session->provider_key);
+        $this->assertSame('daily', $session->provider_key);
         $this->assertNull($session->join_url);
+        $this->assertNull($session->provider_room_name);
         $this->assertFalse($session->consent_to_record);
+        $this->assertSame([], $this->daily->calls, 'booking makes no outbound call: the room is created when the join page opens');
         $this->assertSame(1, TelehealthSessionStatusHistory::query()->where('telehealth_session_id', $session->id)->count());
 
         // Replaying the ensure step (a re-delivered event) creates nothing new.
@@ -53,16 +55,6 @@ class SessionSyncTest extends TelehealthTestCase
         $this->book($this->drA, $this->clientA, '2026-10-06 10:00:00', Modality::InPerson);
 
         $this->assertSame(0, TelehealthSession::query()->count());
-    }
-
-    #[Test]
-    public function the_organizations_default_link_is_copied_to_a_new_session_when_it_is_still_on_the_allowlist(): void
-    {
-        $this->setting('telehealth.default_link_secret', 'https://zoom.us/j/555');
-
-        $session = $this->sessionAt('2026-10-06 10:00:00', link: null);
-
-        $this->assertSame('https://zoom.us/j/555', $session->join_url);
     }
 
     #[Test]
@@ -86,22 +78,35 @@ class SessionSyncTest extends TelehealthTestCase
     }
 
     #[Test]
-    public function rescheduling_retires_the_old_session_and_creates_one_for_the_new_time_with_the_same_link(): void
+    public function rescheduling_moves_the_video_room_to_the_new_session_so_the_clients_link_keeps_working(): void
     {
-        $original = $this->book($this->drA, $this->clientA, '2026-10-06 10:00:00', Modality::Telehealth);
-        $old = $this->sessionOf($original);
-        $this->setSessionLink($old, self::LINK);
+        $old = $this->sessionAt('2026-10-06 10:00:00');
+        [$room, $link] = [$old->provider_room_name, $old->join_url];
+        $this->assertNotNull($room);
 
         $replacement = app(RescheduleAppointment::class)(new RescheduleAppointmentData(
-            appointment: $original, startsAt: CarbonImmutable::parse('2026-10-07 14:00:00', 'UTC'), clinician: $this->drA,
+            appointment: Appointment::query()->findOrFail($old->appointment_id), startsAt: CarbonImmutable::parse('2026-10-07 14:00:00', 'UTC'), clinician: $this->drA,
             source: AppointmentSource::Staff, actor: $this->actor,
         ));
 
-        $this->assertSame(SessionStatus::Cancelled, $old->refresh()->status);
+        $old->refresh();
+        $this->assertSame(SessionStatus::Cancelled, $old->status);
+        $this->assertNull($old->provider_room_name, 'the old session let go of the room');
+        $this->assertNull($old->join_url);
         $new = $this->sessionOf($replacement);
         $this->assertSame(SessionStatus::Scheduled, $new->status);
-        $this->assertSame(self::LINK, $new->join_url);
+        $this->assertSame($room, $new->provider_room_name);
+        $this->assertSame($link, $new->join_url);
         $this->assertSame(2, TelehealthSession::query()->count());
+        $this->assertNotContains('rooms.delete', $this->dailyOperations(), 'cancelling the old session must not delete the moved room');
+
+        // The new window reaches Daily the next time the room is prepared.
+        app(PrepareRoom::class)($new);
+        $update = $this->daily->callsOf('rooms.update')[0] ?? null;
+        $this->assertNotNull($update);
+        $this->assertSame($room, $update['name']);
+        $this->assertSame(CarbonImmutable::parse('2026-10-07 13:45:00', 'UTC')->getTimestamp(), $update['body']['properties']['nbf']);
+        $this->assertSame(CarbonImmutable::parse('2026-10-07 17:00:00', 'UTC')->getTimestamp(), $update['body']['properties']['exp']);
     }
 
     #[Test]
@@ -155,10 +160,5 @@ class SessionSyncTest extends TelehealthTestCase
         } catch (QueryException $e) {
             $this->assertStringContainsString('violates foreign key constraint', $e->getMessage());
         }
-    }
-
-    private function setSessionLink(TelehealthSession $session, string $url): void
-    {
-        app(SetMeetingLink::class)($session, $url, $this->actor);
     }
 }

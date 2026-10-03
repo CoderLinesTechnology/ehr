@@ -12,8 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * One video session per telehealth appointment. Status, link, times, consent and environment are written only
- * by the Telehealth domain actions (nothing is mass-assignable). The meeting link is encrypted at rest.
+ * One video session per telehealth appointment. Status, room, times, consent and environment are written only
+ * by the Telehealth domain actions (nothing is mass-assignable). The video room's address (`join_url`, which is
+ * also the client link) is encrypted at rest and never serialized.
  */
 class TelehealthSession extends Model
 {
@@ -21,7 +22,7 @@ class TelehealthSession extends Model
 
     protected $guarded = ['*'];
 
-    protected $hidden = ['join_url'];
+    protected $hidden = ['join_url', 'provider_room_name'];
 
     protected function casts(): array
     {
@@ -36,6 +37,8 @@ class TelehealthSession extends Model
             'started_at' => 'immutable_datetime',
             'ended_at' => 'immutable_datetime',
             'consent_recorded_at' => 'immutable_datetime',
+            'provider_room_nbf' => 'immutable_datetime',
+            'provider_room_exp' => 'immutable_datetime',
         ];
     }
 

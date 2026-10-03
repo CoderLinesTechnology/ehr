@@ -2,7 +2,7 @@
     $format = app(\App\Support\Formatter::class);
     $startsAt = $format->localDate($details->startsAt, $details->timezone);
     $range = $format->time($details->startsAt, $details->timezone).' – '.$format->time($details->endsAt, $details->timezone);
-    $location = 'Telehealth'.($details->vendor === 'Video' ? '' : ' ('.$details->vendor.')');
+    $location = 'Telehealth ('.$details->vendor.')';
     $size = static fn (int $bytes): string => $bytes >= 1048576 ? number_format($bytes / 1048576, 1).' MB' : max(1, (int) round($bytes / 1024)).' KB';
     $clientUrl = $canViewClient && \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Client::class) ? route('app.clients.show', ['client' => $details->clientId]) : null;
     $messageUrl = $canMessage ? route('app.messages.index') : null;
@@ -97,7 +97,7 @@
                                 <span class="ts-media__icon ts-media__icon--play"><x-ui.icon name="play" :size="16" :stroke="2.4" /></span>
                                 <div class="ts-media__text">
                                     <b>Session Recording</b>
-                                    <small>{{ $details->durationLabel() }} <i aria-hidden="true">•</i> {{ $startsAt }} <i aria-hidden="true">•</i> {{ $size($rec->size_bytes) }}</small>
+                                    <small>{{ $details->durationLabel() }} <i aria-hidden="true">•</i> {{ $startsAt }} <i aria-hidden="true">•</i> {{ $rec->size_bytes !== null ? $size($rec->size_bytes) : 'Kept by '.$details->vendor }}</small>
                                 </div>
                                 <a href="{{ route('app.telehealth.recordings.download', ['session' => $session, 'recording' => $rec]) }}" class="ts-btn" download><x-ui.icon name="download" :size="15" :stroke="2" />Download</a>
                             </li>

@@ -1,5 +1,6 @@
-/* Telehealth module (comps 04 sessions list, 11 join, 06 completed). Values: docs/design/spec/screens/04-telehealth.md,
-   11-telehealth-join.md, 06-telehealth-session-completed.md. Loaded with @push('styles'); app.css stays untouched. */
+/* Telehealth module (comps 04 sessions list, 11 join, 06 completed; the call page has no comp). Values:
+   docs/design/spec/screens/04-telehealth.md, 11-telehealth-join.md, 06-telehealth-session-completed.md,
+   12-telehealth-call.md. Loaded with @push('styles'); app.css stays untouched. */
 
 .tele { display: grid; gap: 24px; min-width: 0; }
 .tele-main, .tele-rail { display: grid; align-content: start; gap: 17px; min-width: 0; }
@@ -216,22 +217,24 @@
   font: inherit; font-size: 14.2px; font-weight: 500; line-height: 1; text-decoration: none; cursor: pointer;
 }
 .tj-join { border: 0; background: linear-gradient(#3a89f7, #2377f6); color: #fff; box-shadow: 0 1px 2px rgba(20, 80, 200, .25); }
+.tj-join-form { margin: 0; }
+button.tj-join { width: calc(100% - 28px); }
 .tj-join:hover { color: #fff; filter: brightness(.96); }
 .tj-join.is-disabled { background: #c9d8ee; color: #fff; box-shadow: none; cursor: not-allowed; }
 .tj-copy { height: 49px; margin-top: 15px; border: 1.5px solid #dbe9fc; background: #fff; color: #0f5ee0; width: calc(100% - 28px); }
 .tj-copy:hover { background: #f4f8fe; }
 .tj-join:focus-visible, .tj-copy:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
 .tj-hint { margin: 10px 14px 0; color: #5d7096; font-size: 11.5px; line-height: 16px; text-align: center; }
+.tj-hint--lobby { margin-top: 9px; }
+.tj-notice { margin: 18px 14px 0; }
+.tj-notice-box { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid #e3ecf8; border-radius: 10px; background: #f7fafe; color: #2a73e8; }
+.tj-notice-box > .icon { flex: none; margin-top: 1px; }
+.tj-notice-box__title { margin: 0; color: #08113f; font-size: 12.8px; font-weight: 600; line-height: 18px; }
+.tj-notice-box__text { margin: 2px 0 0; color: #33487a; font-size: 11.8px; line-height: 17px; }
 .tj-end, .tj-consent { margin: 14px 14px 0; }
 .tj-end { display: flex; justify-content: center; }
 .tj-consent { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid #e3ecf8; border-radius: 10px; background: #f7fafe; }
 .tj-consent p { margin: 0; color: #33487a; font-size: 11.8px; line-height: 17px; }
-.tj-link-form { margin: 14px 14px 0; padding: 14px; border: 1px solid #e3ecf8; border-radius: 10px; background: #f7fafe; }
-.tj-link-form label { color: #08113f; font-size: 12.5px; font-weight: 600; }
-.tj-link-form p { margin: 4px 0 8px; color: #5d7096; font-size: 11.5px; line-height: 16px; }
-.tj-link-form div { display: flex; gap: 8px; }
-.tj-link-form input { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid #d3deef; border-radius: 8px; background: #fff; font: inherit; font-size: 12px; }
-.tj-link-form input:focus { outline: 0; border-color: var(--border-focus); box-shadow: var(--focus-ring); }
 .tj-error { margin: 6px 0 0; color: #b42335; font-size: 11.5px; }
 .tj-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
 .tj-btn--outline { border: 1px solid #d3e1f5; background: #fff; color: #0f5ee0; }
@@ -268,6 +271,42 @@
 .tj-thanks__mark { flex: none; }
 .tj-thanks h2 { margin: 0; color: #2b3a62; font-size: 12.2px; font-weight: 500; line-height: 20px; }
 .tj-thanks p { margin: 4px 0 0; color: #7a8dae; font-size: 11.6px; line-height: 19px; }
+
+/* ======================================================================== */
+/* Call page (no comp; docs/design/spec/screens/12-telehealth-call.md)       */
+/* ======================================================================== */
+.tv { display: grid; gap: 20px; min-width: 0; margin-top: 8px; }
+@media (min-width: 70rem) { .tv { grid-template-columns: minmax(0, 1fr) 314px; margin-inline: -6px 1px; } }
+.tv-main { display: flex; flex-direction: column; min-width: 0; padding: 3px 13px 13px; border-radius: 12px; background: #fefefe; box-shadow: 0 1px 6px rgba(30, 70, 140, .04); }
+.tv-main > .tv-head > .tj-back { justify-self: start; margin-left: -2px; }
+.tv-head { display: grid; gap: 10px; min-width: 0; }
+.tv-head__row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.tv-head__avatar { width: 44px; height: 44px; flex: none; font-size: 15px; font-weight: 500; }
+.tv-head__text { flex: 1; min-width: 0; }
+.tv-head__title { margin: 0; color: #000a2a; font-size: 17px; font-weight: 600; line-height: 24px; overflow-wrap: anywhere; }
+.tv-head__when { margin: 2px 0 0; color: #42588a; font-size: 12px; line-height: 17px; }
+.tv-head__when i { font-style: normal; margin: 0 2px; }
+.tv-head__pill { flex: none; }
+/* The frame fills what the viewport leaves below the shell's top bar and this panel's header. */
+.tv-stage { position: relative; margin-top: 14px; height: calc(100vh - var(--topbar-height) - 172px); min-height: 420px; overflow: hidden; border-radius: 12px; background: #17212a; }
+.tv-frame { display: block; width: 100%; height: 100%; border: 0; }
+.tv-stage--empty { display: grid; place-content: center; justify-items: center; gap: 14px; padding: 24px; border: 1px solid #e3ecf8; background: #f7fafe; }
+.tv-stage--empty .tj-notice-box { max-width: 460px; background: #fff; }
+.tv-rail { display: grid; align-content: start; gap: 15px; min-width: 0; }
+.tj-details--compact { min-height: 0; padding: 20px 20px 8px; }
+.tj-details--compact dl { margin-top: 10px; }
+.tj-details--compact dl > div { height: auto; min-height: 56px; padding-bottom: 6px; }
+.tv-card { display: grid; gap: 10px; padding: 18px 20px; }
+.tv-card__title { display: flex; align-items: center; gap: 10px; margin: 0; color: #00061e; font-size: 14px; font-weight: 600; line-height: 20px; }
+.tv-card__title .icon { color: #1f78f0; }
+.tv-card__text { margin: 0; color: #4d6389; font-size: 12px; line-height: 18px; }
+.tv-card__btn { width: 100%; gap: 8px; }
+.tv-card form { margin: 0; }
+.tv-end .btn { width: 100%; border-color: #f3c4c4; color: #c62828; }
+.tv-end .btn:hover { border-color: #eba3a3; background: #fff5f5; color: #b42318; }
+@media (max-width: 69.999rem) {
+  .tv-stage { height: min(72vh, 620px); min-height: 360px; }
+}
 
 /* Transcript page */
 .tc { display: grid; gap: 14px; max-width: 860px; }

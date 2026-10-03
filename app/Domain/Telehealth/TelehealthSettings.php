@@ -27,11 +27,4 @@ final class TelehealthSettings
     {
         return (bool) $this->settings->organization($organization, 'telehealth.ai_transcripts_enabled');
     }
-
-    public function hasDefaultLink(Organization|string $organization): bool
-    {
-        $link = $this->settings->organization($organization, 'telehealth.default_link_secret');
-
-        return is_string($link) && $link !== '';
-    }
 }

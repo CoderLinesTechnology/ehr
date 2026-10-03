@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Route;
 // Guarded twice: the plan must include telehealth (`feature:telehealth`) AND the member must be allowed
 // (`can:` → TelehealthSessionPolicy). Everything under telehealth/{session} starts from a policy check: a
 // session outside what the member may see is a 404, one without the needed permission a 403. Only the join
-// page and the device check opt in to camera and microphone (`media` default, read by SecurityHeaders).
+// page and the device check opt in to camera and microphone (`media` default), and only the call page may frame
+// Daily and delegate camera/microphone/screen sharing to that frame (`video_call` default); both are read by
+// SecurityHeaders. Daily's webhook is not here: routes/webhooks.php (no session, no CSRF, signature-checked).
 
 Route::middleware('feature:telehealth')->group(function () {
     Route::prefix('telehealth')->name('telehealth.')->group(function () {
@@ -27,11 +29,12 @@ Route::middleware('feature:telehealth')->group(function () {
         Route::prefix('{session}')->scopeBindings()->group(function () {
             Route::get('/', [SessionController::class, 'show'])->middleware('can:view,session')->name('show');
             Route::get('join', [SessionController::class, 'join'])->defaults('media', true)->middleware('can:join,session')->name('join');
+            Route::get('call', [SessionController::class, 'call'])->defaults('video_call', true)
+                ->middleware(['can:join,session', 'throttle:30,1'])->name('call');
 
             Route::middleware('can:join,session')->group(function () {
                 Route::post('start', [SessionActionController::class, 'start'])->middleware('throttle:30,1')->name('start');
                 Route::post('end', [SessionActionController::class, 'end'])->middleware('throttle:30,1')->name('end');
-                Route::put('link', [SessionActionController::class, 'link'])->middleware('throttle:30,1')->name('link');
             });
 
             Route::middleware('can:clinical,session')->group(function () {

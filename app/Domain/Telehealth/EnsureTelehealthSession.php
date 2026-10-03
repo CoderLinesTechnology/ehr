@@ -5,8 +5,6 @@ namespace App\Domain\Telehealth;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Scheduling\Modality;
 use App\Domain\Scheduling\Support\TenantGuard;
-use App\Domain\Shared\DomainException;
-use App\Domain\Telehealth\Providers\MeetingRequest;
 use App\Domain\Telehealth\Providers\ProviderRegistry;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\Appointment;
@@ -16,8 +14,9 @@ use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * Creates the session of a telehealth appointment (once: unique per appointment), copying the live/demo
- * environment, client and clinician from it and asking the provider for the meeting link (the organization's
- * default when none is supplied). Called by the scheduling listener; safe to call twice.
+ * environment, client, clinician and times from it, on the default video provider. No outbound call: the video
+ * room is created when someone first opens the join page (PrepareRoom). Called by the scheduling listener; safe
+ * to call twice.
  */
 final class EnsureTelehealthSession
 {
@@ -27,7 +26,7 @@ final class EnsureTelehealthSession
         private readonly AuditLogger $audit,
     ) {}
 
-    public function __invoke(Appointment $appointment, ?string $suppliedUrl = null, ?string $actorUserId = null): ?TelehealthSession
+    public function __invoke(Appointment $appointment, ?string $actorUserId = null): ?TelehealthSession
     {
         $organization = $this->tenant->organizationOrFail();
         TenantGuard::assertOwned($organization->id, $appointment);
@@ -44,13 +43,6 @@ final class EnsureTelehealthSession
         $provider = $this->providers->default();
 
         try {
-            $details = $provider->createMeeting(new MeetingRequest($organization, $appointment, $suppliedUrl));
-        } catch (DomainException) {
-            // An unacceptable supplied link must not stop the appointment having a session; it simply has no link yet.
-            $details = $provider->createMeeting(new MeetingRequest($organization, $appointment, null));
-        }
-
-        try {
             $session = new TelehealthSession;
             $session->forceFill([
                 'organization_id' => $organization->id,
@@ -62,7 +54,6 @@ final class EnsureTelehealthSession
                 'ends_at' => $appointment->ends_at,
                 'status' => SessionStatus::Scheduled,
                 'provider_key' => $provider->key(),
-                'join_url' => $details->joinUrl,
             ])->save();
         } catch (UniqueConstraintViolationException) {
             return TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
@@ -81,7 +72,7 @@ final class EnsureTelehealthSession
         $this->audit->record(
             'telehealth.session_created',
             subject: $session,
-            after: ['status' => SessionStatus::Scheduled->value, 'provider' => $session->provider_key, 'has_link' => $details->joinUrl !== null],
+            after: ['status' => SessionStatus::Scheduled->value, 'provider' => $session->provider_key],
             summary: 'Telehealth session created for a telehealth appointment',
         );
 

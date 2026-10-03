@@ -29,6 +29,7 @@ x302–1178, 1px `#f1f5fd`, radius 12, padding 10/16. Title "Upcoming Telehealth
 * "Join" appears only from `telehealth.join_early_minutes` (default 15, max 120) before the start until the end, for members holding `telehealth.join`; everyone else gets "View". The comp shows Join on five rows, which is only reproducible with a wider window: the screenshot check therefore compares Join on row 1 (inside the window) and View on row 6, and the other View rows against the same View style.
 * The comp's tab reads "Upcoming (5)" over a list of six rows (its sixth row, Emily Johnson's 28 Apr session, is the completed one in comp 06); the app counts what it lists.
 * Cards the member cannot use (no `telehealth.manage`, no calendar permission) are left out, like nav items.
+* The list never hands out a video room link: "Join" leads to the session's join page (Daily, docs/design/spec/screens/11-telehealth-join.md), where the room is prepared.
 * The comp's side nav shows Tasks/Documents/Reports; those modules do not exist yet, so the app nav (shell, not this screen) shows fewer items.
 
 ## Verification

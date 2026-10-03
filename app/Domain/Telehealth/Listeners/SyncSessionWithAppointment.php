@@ -15,9 +15,10 @@ use Closure;
 
 /**
  * Projects scheduling events onto telehealth sessions: a telehealth appointment gets its session when booked,
- * the session follows its status (cancelled, no-show → missed, completed), and a reschedule retires the old
- * session and creates the new one with the same meeting link. Only telehealth appointments (and sessions of
- * appointments that were telehealth) are touched.
+ * the session follows its status (cancelled, no-show → missed, completed), and a reschedule creates the new
+ * session, moves the video room to it (the client's link keeps working) and only then retires the old session —
+ * in that order, because retiring a session deletes the room it still holds. Only telehealth appointments (and
+ * sessions of appointments that were telehealth) are touched.
  */
 final class SyncSessionWithAppointment
 {
@@ -53,11 +54,11 @@ final class SyncSessionWithAppointment
         $this->within($event->replacement, function () use ($event) {
             $old = TelehealthSession::query()->where('appointment_id', $event->original->id)->first();
 
-            ($this->sync)($event->original, 'Rescheduled', $event->actorUserId);
-
             if ($event->replacement->modality === Modality::Telehealth) {
                 ($this->sync)($event->replacement, null, $event->actorUserId, $old);
             }
+
+            ($this->sync)($event->original, 'Rescheduled', $event->actorUserId);
         });
     }
 

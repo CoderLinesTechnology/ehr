@@ -3,13 +3,16 @@
     $startsAt = $format->localDate($details->startsAt, $details->timezone);
     $range = $format->time($details->startsAt, $details->timezone).' – '.$format->time($details->endsAt, $details->timezone);
     $running = $session->status === \App\Domain\Telehealth\SessionStatus::InProgress;
-    $canJoinNow = $details->hasLink && $joinUrl !== null && ($details->joinWindowOpen || $running);
+    $ready = $video === 'ready' && $clientLink !== null;
+    $canJoinNow = $ready && ($details->joinWindowOpen || $running);
     $opensAt = \App\Domain\Telehealth\JoinWindow::opensAt($details->startsAt, $details->joinEarlyMinutes);
     $headline = match (true) {
-        $running => 'This session is in progress. You can rejoin below.',
+        $running && $ready => 'This session is in progress. You can rejoin below.',
+        $video === 'demo' => 'Demo session — video is not connected.',
+        $video === 'not_configured' => 'Video calls are not set up yet.',
+        $video === 'unavailable' => 'The video service could not be reached right now.',
+        $video === 'closed' || now()->greaterThanOrEqualTo($details->endsAt) => 'The time for this session has passed.',
         $canJoinNow => 'Your session is ready. Click the button below to join.',
-        ! $details->hasLink || $joinUrl === null => 'Add the meeting link below to get this session ready.',
-        now()->greaterThanOrEqualTo($details->endsAt) => 'The time for this session has passed.',
         default => 'You can join from '.$format->time($opensAt, $details->timezone).'.',
     };
 @endphp
@@ -44,7 +47,7 @@
                 </div>
                 <div class="tj-client__cell">
                     <x-ui.icon name="video" :size="24" :stroke="1.8" />
-                    <span><b>Video</b><small>{{ $details->vendor === 'Video' ? 'Video meeting' : $details->vendor.' Meeting' }}</small></span>
+                    <span><b>Video</b><small>{{ $details->vendor }} Meeting</small></span>
                 </div>
                 <div class="tj-client__cell">
                     <x-ui.icon name="map-pin" :size="22" :stroke="1.8" />
@@ -54,30 +57,25 @@
 
             @include('app.telehealth.partials-preview')
 
-            @if (! $details->hasLink || $joinUrl === null)
-                <form method="POST" action="{{ route('app.telehealth.link', ['session' => $session]) }}" class="tj-link-form" data-submit-once novalidate>
-                    @csrf @method('PUT')
-                    <label for="tj-join-url">Meeting link</label>
-                    <p>{{ $details->hasLink ? 'The saved link is no longer on your organization\'s list of allowed meeting hosts. Paste a new Zoom, Google Meet or Microsoft Teams link for this session.' : 'Paste the Zoom, Google Meet or Microsoft Teams link for this session.' }} It is stored encrypted and only staff who may join can see it.</p>
-                    <div>
-                        <input type="url" id="tj-join-url" name="join_url" value="{{ old('join_url') }}" placeholder="https://" maxlength="2048" autocomplete="off" aria-describedby="tj-join-url-error" required>
-                        <button type="submit" class="tj-btn tj-btn--outline">Save link</button>
-                    </div>
-                    @error('join_url')<p class="tj-error" id="tj-join-url-error" role="alert">{{ $message }}</p>@enderror
-                </form>
+            @if (! $ready)
+                @include('app.telehealth.partials-video-notice', ['state' => $video, 'canManage' => $canManage, 'class' => 'tj-notice'])
             @endif
 
             @if ($canJoinNow)
-                <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer" class="tj-join" data-telehealth-join data-start-url="{{ route('app.telehealth.start', ['session' => $session]) }}"><x-ui.icon name="video" :size="19" :stroke="2" />{{ $running ? 'Rejoin Session' : 'Join Session' }}</a>
+                <form method="POST" action="{{ route('app.telehealth.start', ['session' => $session]) }}" class="tj-join-form" data-telehealth-join data-submit-once>
+                    @csrf
+                    <button type="submit" class="tj-join"><x-ui.icon name="video" :size="19" :stroke="2" />{{ $running ? 'Rejoin Session' : 'Join Session' }}</button>
+                </form>
             @else
                 <span class="tj-join is-disabled" aria-disabled="true"><x-ui.icon name="video" :size="19" :stroke="2" />Join Session</span>
-                @if ($details->hasLink && $joinUrl !== null)
+                @if ($ready)
                     <p class="tj-hint">You can join from {{ $format->time($opensAt, $details->timezone) }} until the session ends at {{ $format->time($details->endsAt, $details->timezone) }}.</p>
                 @endif
             @endif
 
-            @if ($details->hasLink && $joinUrl !== null)
-                <button type="button" class="tj-copy" data-telehealth-copy data-url="{{ $joinUrl }}"><x-ui.icon name="link" :size="19" :stroke="2" /><span data-copy-label>Copy Meeting Link</span></button>
+            @if ($ready)
+                <button type="button" class="tj-copy" data-telehealth-copy data-url="{{ $clientLink }}"><x-ui.icon name="link" :size="19" :stroke="2" /><span data-copy-label>Copy Meeting Link</span></button>
+                <p class="tj-hint tj-hint--lobby">Clients who open this link wait in the lobby until you admit them.</p>
             @endif
 
             @if ($running)
@@ -98,16 +96,7 @@
         </section>
 
         <aside class="tj-rail" aria-label="Session information">
-            <section class="tj-card tj-details">
-                <h2 class="tj-card__title"><x-ui.icon name="calendar" :size="22" :stroke="1.9" />Session Details</h2>
-                <dl>
-                    <div><x-ui.icon name="clock" :size="24" :stroke="1.7" /><dt>Date &amp; Time</dt><dd>{{ $startsAt }} <i aria-hidden="true">•</i> {{ $range }}</dd></div>
-                    <div><x-ui.icon name="user" :size="24" :stroke="1.7" /><dt>Client</dt><dd>{{ $details->clientName }}</dd></div>
-                    <div><x-ui.icon name="user" :size="24" :stroke="1.7" /><dt>Provider</dt><dd>{{ $details->clinicianName }}</dd></div>
-                    <div><x-ui.icon name="calendar" :size="24" :stroke="1.7" /><dt>Service</dt><dd>{{ $details->serviceName }}</dd></div>
-                    <div><x-ui.icon name="map-pin" :size="24" :stroke="1.7" /><dt>Location</dt><dd>Telehealth{{ $details->vendor === 'Video' ? '' : ' ('.$details->vendor.')' }}</dd></div>
-                </dl>
-            </section>
+            @include('app.telehealth.partials-details')
 
             <section class="tj-card tj-before">
                 <x-ui.icon name="shield-check" :size="24" :stroke="1.9" />

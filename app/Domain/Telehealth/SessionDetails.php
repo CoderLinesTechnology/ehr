@@ -30,8 +30,6 @@ final readonly class SessionDetails
         public string $timezone,
         public string $appointmentId,
         public string $vendor,
-        public string $providerLabel,
-        public bool $hasLink,
         public bool $clinical,
         public ?string $notes,
         public int $noteVersion,

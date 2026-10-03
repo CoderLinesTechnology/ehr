@@ -5,7 +5,11 @@ namespace App\Http\Controllers\App\Telehealth;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Scheduling\Modality;
 use App\Domain\Settings\SettingsService;
+use App\Domain\Shared\DomainException;
+use App\Domain\Telehealth\IssueCallPass;
+use App\Domain\Telehealth\PrepareRoom;
 use App\Domain\Telehealth\Providers\ProviderRegistry;
+use App\Domain\Telehealth\Providers\VideoRoom;
 use App\Domain\Telehealth\ReconcileSessions;
 use App\Domain\Telehealth\SessionDetailsReader;
 use App\Domain\Telehealth\SessionListReader;
@@ -21,8 +25,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 
 /**
- * The sessions list, the join page and the completed page. Authorization is declared on the routes
- * (`can:` → TelehealthSessionPolicy); this only decides which links the page offers.
+ * The sessions list, the join page, the call page and the completed page. Authorization is declared on the routes
+ * (`can:` → TelehealthSessionPolicy); this only decides what the page offers. The join and call pages never fail
+ * because of the video service: when it is not set up, unreachable, or the session is demo data, they say so.
  */
 final class SessionController extends Controller
 {
@@ -90,7 +95,7 @@ final class SessionController extends Controller
         ]);
     }
 
-    public function join(TelehealthSession $session, SessionDetailsReader $reader): View|RedirectResponse
+    public function join(TelehealthSession $session, SessionDetailsReader $reader, PrepareRoom $prepare): View|RedirectResponse
     {
         if (! $session->status->isOpen()) {
             return $session->status === SessionStatus::Completed
@@ -98,20 +103,81 @@ final class SessionController extends Controller
                 : redirect()->route('app.telehealth.index')->with('info', 'That session did not take place.');
         }
 
-        $membership = tenant()->membership();
+        // The room is prepared when the page opens, so its link can be copied for the client ahead of time.
+        [$video, $room] = $this->video($session, fn () => $prepare($session));
         $clinical = Gate::allows('clinical', $session);
-        $details = $reader->read($session, $membership, false);
 
         return view('app.telehealth.join', [
             'session' => $session,
-            'details' => $details,
-            // The meeting link is handed only to people who may join, and only if it still passes the host allowlist.
-            'joinUrl' => $details->hasLink ? app(ProviderRegistry::class)->get($session->provider_key)->joinUrlFor($session, request()->user()) : null,
+            'details' => $reader->read($session, tenant()->membership(), false),
+            'video' => $video,
+            'clientLink' => $room?->url,   // handed only to people who may join (the route's policy)
+            'canManage' => Gate::allows('telehealth.manage'),
             'clinical' => $clinical,
             'recordingOn' => $clinical && app(TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
             'calendarUrl' => Route::has('app.calendar.index') && Gate::allows('viewAny', Appointment::class) ? route('app.calendar.index') : route('app.telehealth.index'),
             'supportEmail' => $this->supportEmail(),
         ]);
+    }
+
+    /**
+     * The call: Daily Prebuilt framed in the page with a pass minted for this viewer (never stored or logged; the
+     * page is no-store like every signed-in page). Only a running session has a call; others go to their page.
+     */
+    public function call(TelehealthSession $session, SessionDetailsReader $reader, IssueCallPass $issue): View|RedirectResponse
+    {
+        if ($session->status !== SessionStatus::InProgress) {
+            return $session->status === SessionStatus::Completed
+                ? redirect()->route('app.telehealth.show', ['session' => $session])
+                : redirect()->route('app.telehealth.join', ['session' => $session]);
+        }
+
+        $membership = tenant()->membership();
+        $pass = null;
+        [$video] = $this->video($session, function () use ($issue, $session, $membership, &$pass) {
+            $pass = $issue($session, $membership);
+
+            return null;
+        });
+        $clinical = Gate::allows('clinical', $session);
+
+        return view('app.telehealth.call', [
+            'session' => $session,
+            'details' => $reader->read($session, $membership, false),
+            'video' => $video,
+            'pass' => $pass,
+            'clientLink' => $pass !== null && is_string($session->join_url) ? $session->join_url : null,
+            'canManage' => Gate::allows('telehealth.manage'),
+            'clinical' => $clinical,
+            'recordingOn' => app(TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
+        ]);
+    }
+
+    /**
+     * What the page can say about video: 'ready', 'demo' (demo data never reaches the vendor), 'not_configured',
+     * 'unavailable' (the vendor failed) or 'closed' (the room's time is over). $connect runs only when video can work.
+     *
+     * @param  \Closure(): ?VideoRoom  $connect
+     * @return array{0: string, 1: ?VideoRoom}
+     */
+    private function video(TelehealthSession $session, \Closure $connect): array
+    {
+        if ($session->isDemo()) {
+            return ['demo', null];
+        }
+        if (! app(ProviderRegistry::class)->get($session->provider_key)->status()->usable()) {
+            return ['not_configured', null];
+        }
+
+        try {
+            return ['ready', $connect()];
+        } catch (DomainException $e) {
+            return [match ($e->errorCode()) {
+                'video_closed' => 'closed',
+                'video_not_available' => 'not_configured',
+                default => 'unavailable',
+            }, null];
+        }
     }
 
     private function supportEmail(): ?string

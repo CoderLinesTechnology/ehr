@@ -9,12 +9,16 @@ use App\Models\TelehealthSessionStatusHistory;
 
 /**
  * The one place a session's status changes: checks the state machine, stamps the columns the caller passes,
- * writes the insert-only history row and the audit entry (status only — never the link or any clinical text).
+ * writes the insert-only history row and the audit entry (status only — never the room, link or any clinical
+ * text). A session that finishes (completed, cancelled, missed) gives its video room back after commit.
  * Callers hold the row lock; this does not lock.
  */
 final class SessionTransition
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly ReleaseRoom $rooms,
+    ) {}
 
     /** @param array<string, mixed> $changes extra columns written together with the status */
     public function apply(TelehealthSession $locked, SessionStatus $to, ?string $actorUserId, ?string $reason = null, array $changes = []): void
@@ -45,5 +49,9 @@ final class SessionTransition
             metadata: array_filter(['reason' => $reason]),
             summary: "Telehealth session {$from->label()} → {$to->label()}",
         );
+
+        if (! $to->isOpen()) {
+            $this->rooms->afterCommit($locked);
+        }
     }
 }

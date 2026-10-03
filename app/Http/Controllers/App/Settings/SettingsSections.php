@@ -42,7 +42,7 @@ final class SettingsSections
             ['clients', 'Clients', 'user', 'app.settings.clients.edit', fn () => Gate::allows('organization.settings.manage') && $has(FeatureRegistry::CLIENTS),
                 'Client Settings', 'What you require when a new client is registered.'],
             ['telehealth', 'Telehealth', 'video', 'app.settings.telehealth.edit', fn () => Gate::allows('telehealth.manage') && $has(FeatureRegistry::TELEHEALTH),
-                'Telehealth', 'Meeting links, join window, recording and AI transcript options.'],
+                'Telehealth', 'Video service, join window, recording and AI transcript options.'],
             ['audit', 'Audit log', 'scroll-text', 'app.settings.audit.index', fn () => Gate::allows('audit.view'),
                 'Audit log', 'Who did what, and when, in this organization.'],
             ['subscription', 'Subscription & usage', 'credit-card', 'app.settings.subscription.show', fn () => Gate::allows('organization.settings.manage'),

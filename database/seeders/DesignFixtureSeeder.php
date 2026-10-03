@@ -612,10 +612,13 @@ class DesignFixtureSeeder extends Seeder
     }
 
     /**
-     * Telehealth comps 04/11/06: six telehealth sessions (Zoom links) and Emily Johnson's 28 Apr 10:00 session run
+     * Telehealth comps 04/11/06: six telehealth sessions on Daily and Emily Johnson's 28 Apr 10:00 session run
      * through the real actions on a pinned clock — completed, with notes, a consented tiny WAV "recording" and an AI
      * DRAFT transcript. The recording's displayed size/duration mimic the comp (the stored file is a few KB).
-     * Recording and AI settings are switched back off at the end, as a new organization would have them.
+     * Every session gets a simulated Daily room written directly (the fake client's address shape, the window
+     * PrepareRoom would ask for), so the screens render their "ready" states with DAILY_FAKE=true and no network;
+     * Emily's room is written after her session ended, so ending it calls nobody. Recording and AI settings are
+     * switched back off at the end, as a new organization would have them.
      *
      * @param  array<string, Client>  $clients
      * @param  array<string, Service>  $services
@@ -642,7 +645,9 @@ class DesignFixtureSeeder extends Seeder
                 modality: Modality::Telehealth, startsAt: CarbonImmutable::parse("{$date} {$time}", self::TZ), actor: $actor,
             ));
             $session = \App\Models\TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
-            app(\App\Domain\Telehealth\SetMeetingLink::class)($session, "https://zoom.us/j/{$meeting}", $actor);
+            if ($client !== 'Emily Johnson') {
+                $this->fakeRoom($session, "wnfixture{$meeting}");
+            }
             $sessions[$client] = $session->refresh();
         }
 
@@ -679,7 +684,22 @@ class DesignFixtureSeeder extends Seeder
         } finally {
             CarbonImmutable::setTestNow($previousNow);
         }
+        $this->fakeRoom($emily->refresh(), 'wnfixture84311220012');
 
         $settings->seedOrganization($organization, ['telehealth.recording_enabled' => false, 'telehealth.ai_transcripts_enabled' => false]);
+    }
+
+    /** A simulated Daily room (FakeDailyClient's address shape) with the window PrepareRoom would ask for — no network. */
+    private function fakeRoom(\App\Models\TelehealthSession $session, string $name): void
+    {
+        [$notBefore, $expiresAt] = \App\Domain\Telehealth\PrepareRoom::window(
+            $session->starts_at, $session->ends_at, app(\App\Domain\Telehealth\TelehealthSettings::class)->joinEarlyMinutes($session->organization_id),
+        );
+        $session->forceFill([
+            'provider_room_name' => $name,
+            'join_url' => \App\Domain\Telehealth\Daily\FakeDailyClient::DOMAIN.'/'.$name,
+            'provider_room_nbf' => $notBefore,
+            'provider_room_exp' => $expiresAt,
+        ])->save();
     }
 }

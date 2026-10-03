@@ -6,8 +6,9 @@ use App\Domain\Shared\LabelledEnum;
 
 /**
  * The telehealth session state machine. Every change goes through a Telehealth action, which records the
- * insert-only history. "Waiting" is reserved for providers with a waiting room (capability); the external
- * meeting-link provider has none, so its sessions go scheduled → in progress.
+ * insert-only history. "Waiting" is reserved for a client waiting in the provider's lobby: Daily has one, but
+ * WellNest does not observe it yet (the call page loads no vendor script and the lobby webhooks are not
+ * subscribed), so sessions go scheduled → in progress when a staff member starts the call.
  */
 enum SessionStatus: string
 {

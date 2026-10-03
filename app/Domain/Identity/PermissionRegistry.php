@@ -75,7 +75,7 @@ final class PermissionRegistry
             // Telehealth
             ['telehealth.join', $o, 'Telehealth', 'Join telehealth sessions', 'See telehealth sessions and join them (own sessions, or all with "View all appointments").', false],
             ['telehealth.notes', $o, 'Telehealth', 'Telehealth session notes and recordings', 'Write session notes; open recordings and transcripts of sessions the user can see.', true],
-            ['telehealth.manage', $o, 'Telehealth', 'Manage telehealth settings', 'Meeting-link hosts, default link, join window, recording and AI transcript options.', false],
+            ['telehealth.manage', $o, 'Telehealth', 'Manage telehealth settings', 'Join window, recording and AI transcript options. In a call they join, they can admit the client too.', false],
 
             // Platform (Super Admin console)
             ['platform.dashboard.view', $p, 'Platform', 'View platform dashboard', '', false],

@@ -4,7 +4,7 @@ namespace App\Domain\Telehealth;
 
 use App\Domain\Identity\PermissionResolver;
 use App\Domain\Scheduling\AppointmentStatus;
-use App\Domain\Telehealth\Providers\MeetingLinkPolicy;
+use App\Domain\Telehealth\Providers\ProviderRegistry;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\Appointment;
 use App\Models\Client;
@@ -20,6 +20,7 @@ final class SessionDetailsReader
         private readonly TenantContext $tenant,
         private readonly PermissionResolver $permissions,
         private readonly TelehealthSettings $settings,
+        private readonly ProviderRegistry $providers,
     ) {}
 
     public function read(TelehealthSession $session, OrganizationMembership $viewer, bool $clinical): SessionDetails
@@ -48,7 +49,6 @@ final class SessionDetailsReader
         }
 
         $early = min($this->settings->joinEarlyMinutes($organization), TelehealthSettings::MAX_EARLY_MINUTES);
-        $url = $session->join_url;
 
         return new SessionDetails(
             clientName: $client->displayName(),
@@ -62,9 +62,7 @@ final class SessionDetailsReader
             endsAt: $appointment->ends_at,
             timezone: $appointment->timezone,
             appointmentId: $appointment->id,
-            vendor: MeetingLinkPolicy::vendorLabel(is_string($url) ? $url : null),
-            providerLabel: $session->provider_key === 'external_link' ? 'External meeting link' : $session->provider_key,
-            hasLink: is_string($url) && $url !== '',
+            vendor: in_array($session->provider_key, $this->providers->keys(), true) ? $this->providers->get($session->provider_key)->label() : 'Video',
             clinical: $clinical,
             notes: $notes,
             noteVersion: $version,

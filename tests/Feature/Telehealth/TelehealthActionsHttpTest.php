@@ -223,40 +223,54 @@ class TelehealthActionsHttpTest extends TelehealthTestCase
         $this->as($this->drA)->get($this->url('app.settings.telehealth.edit'))->assertForbidden();
 
         $html = $this->as($this->manager)->get($this->url('app.settings.telehealth.edit'))->assertOk()->getContent();
-        $this->assertStringContainsString('Allowed meeting-link hosts', $html);
         $this->assertStringContainsString('Allow session recordings', $html);
+        $this->assertStringContainsString('wait in a lobby until the clinician', $html);
+        $this->assertStringNotContainsString('Allowed meeting-link hosts', $html);
+        $this->assertStringNotContainsString('Default meeting link', $html);
         $this->assertStringContainsString('app/settings/telehealth', str_replace(['\\/', route('app.settings.telehealth.edit', ['organization' => $this->organization->slug])], ['/', 'app/settings/telehealth'], $html));
     }
 
     #[Test]
-    public function the_settings_form_validates_hosts_and_the_default_link_and_keeps_the_stored_link_secret(): void
+    public function the_settings_page_shows_whether_the_video_service_is_set_up(): void
+    {
+        $this->as($this->manager)->get($this->url('app.settings.telehealth.edit'))->assertOk()
+            ->assertSee('Simulated (local development)')->assertSee('nothing reaches Daily');
+
+        $this->videoNotConfigured();
+        $this->get($this->url('app.settings.telehealth.edit'))->assertOk()->assertSee('Not set up')->assertSee('DAILY_API_KEY');
+
+        $this->realDaily();
+        $html = $this->get($this->url('app.settings.telehealth.edit'))->assertOk()->assertSee('Connected')->getContent();
+        $this->assertStringNotContainsString(self::API_KEY, $html, 'the key is never shown');
+        $this->assertSame([], $this->daily->calls, 'showing the status calls nobody');
+    }
+
+    #[Test]
+    public function the_settings_form_saves_the_join_window_and_opt_ins_and_refuses_the_retired_link_settings(): void
     {
         $url = $this->url('app.settings.telehealth.update');
-        $valid = ['allowed_hosts' => "zoom.us\n*.zoom.us\nmeet.google.com", 'join_early_minutes' => 20, 'recording_enabled' => '1'];
+        $valid = ['join_early_minutes' => 20, 'recording_enabled' => '1'];
 
-        $this->as($this->manager)->put($url, $valid + ['default_link' => 'https://zoom.us/j/424242?pwd=KeepMe'])->assertRedirect($this->url('app.settings.telehealth.edit'));
+        $this->as($this->manager)->put($url, $valid + ['default_link' => 'https://zoom.us/j/1', 'allowed_hosts' => '*'])
+            ->assertRedirect($this->url('app.settings.telehealth.edit'));
         $settings = app(SettingsService::class);
         $this->assertSame(20, $settings->organization($this->organization, 'telehealth.join_early_minutes'));
         $this->assertTrue($settings->organization($this->organization, 'telehealth.recording_enabled'));
         $this->assertFalse($settings->organization($this->organization, 'telehealth.ai_transcripts_enabled'));
-        $this->assertStringNotContainsString('KeepMe', (string) DB::table('organization_settings')->where('key', 'telehealth.default_link_secret')->value('value'));
-        $this->assertStringNotContainsString('KeepMe', json_encode(DB::table('audit_logs')->get()));
+        $this->assertSame(0, DB::table('organization_settings')->whereIn('key', ['telehealth.default_link_secret', 'telehealth.allowed_hosts'])->count(), 'retired fields are ignored');
 
-        // The saved link is never printed back, and saving with the field empty keeps it.
-        $this->get($url)->assertDontSee('KeepMe');
-        $this->put($url, $valid)->assertRedirect();
-        $settings->flush();
-        $this->assertSame('https://zoom.us/j/424242?pwd=KeepMe', $settings->organization($this->organization, 'telehealth.default_link_secret'));
-
-        $this->put($url, $valid + ['remove_default_link' => '1'])->assertRedirect();
-        $settings->flush();
-        $this->assertNull($settings->organization($this->organization, 'telehealth.default_link_secret'));
-
-        foreach ([
-            ['allowed_hosts' => 'https://zoom.us'], ['allowed_hosts' => '*'], ['allowed_hosts' => ''], ['allowed_hosts' => 'zoom.us', 'join_early_minutes' => 500],
-            ['allowed_hosts' => 'zoom.us', 'default_link' => 'http://zoom.us/j/1'], ['allowed_hosts' => 'zoom.us', 'default_link' => 'https://example.com/x'],
-        ] as $bad) {
+        foreach ([['join_early_minutes' => 500], ['join_early_minutes' => -1], ['join_early_minutes' => 'soon'], ['recording_enabled' => 'maybe']] as $bad) {
             $this->put($url, $bad + $valid)->assertSessionHasErrors();
+        }
+
+        // The registry no longer knows the link settings at all.
+        foreach (['telehealth.default_link_secret', 'telehealth.allowed_hosts'] as $retired) {
+            try {
+                $settings->organization($this->organization, $retired);
+                $this->fail("{$retired} is still a setting.");
+            } catch (\InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
         }
     }
 
@@ -266,7 +280,9 @@ class TelehealthActionsHttpTest extends TelehealthTestCase
         $evil = $this->client(['first_name' => '<img src=x onerror=alert(1)>', 'last_name' => 'Tester']);
         $session = $this->sessionAt('2026-10-02 08:05:00', $this->drA, $evil);
 
-        foreach ([$this->url('app.telehealth.index'), $this->joinUrl($session), $this->url('app.telehealth.check')] as $url) {
+        $this->as($this->drA)->postJson($this->url('app.telehealth.start', ['session' => $session->id]))->assertOk();
+
+        foreach ([$this->url('app.telehealth.index'), $this->joinUrl($session), $this->url('app.telehealth.check'), $this->callUrl($session)] as $url) {
             $html = $this->as($this->drA)->get($url)->assertOk()->getContent();
             $this->assertStringNotContainsString('<img src=x', $html, $url);
             $this->assertStringNotContainsString('{!!', $html);

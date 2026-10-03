@@ -5,15 +5,22 @@ namespace App\Domain\Telehealth;
 use App\Domain\Audit\AuditLogger;
 use App\Domain\Scheduling\Support\TenantGuard;
 use App\Domain\Shared\DomainException;
+use App\Domain\Telehealth\Providers\ProviderRegistry;
+use App\Domain\Telehealth\Providers\VideoServiceException;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\TelehealthSession;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Records that the client agreed (or no longer agrees) to the session being recorded. Recording is off unless
  * the organization allows it AND consent is recorded here; the database also refuses a recording or transcript
  * row for a session without consent. Consent cannot be withdrawn once a recording is stored (delete it first).
+ *
+ * Withdrawing consent while the call runs stops a cloud recording in progress at the vendor (after commit, best
+ * effort); call passes issued from then on cannot record, and a recording that still arrives for the session is
+ * deleted at the vendor by the webhook receiver instead of being stored.
  */
 final class RecordConsent
 {
@@ -21,6 +28,7 @@ final class RecordConsent
         private readonly TenantContext $tenant,
         private readonly AuditLogger $audit,
         private readonly TelehealthSettings $settings,
+        private readonly ProviderRegistry $providers,
     ) {}
 
     public function __invoke(TelehealthSession $session, bool $consent, ?User $actor = null): TelehealthSession
@@ -62,9 +70,27 @@ final class RecordConsent
                 summary: $consent ? 'Client consent to record the telehealth session was recorded' : 'Client consent to record was withdrawn',
             );
 
+            if (! $consent && $locked->status === SessionStatus::InProgress && $locked->provider_room_name !== null && ! $locked->isDemo()) {
+                [$room, $providerKey] = [$locked->provider_room_name, $locked->provider_key];
+                DB::afterCommit(fn () => $this->stopRecording($providerKey, $room));
+            }
+
             $session->setRawAttributes($locked->getAttributes(), true);
 
             return $session;
         });
+    }
+
+    private function stopRecording(string $providerKey, string $room): void
+    {
+        try {
+            $provider = $this->providers->get($providerKey);
+            if ($provider->status()->usable()) {
+                $provider->stopRecording($room);
+            }
+        } catch (VideoServiceException $e) {
+            // Usually "nothing is being recorded". A recording that was running is refused when it arrives anyway.
+            Log::info('Telehealth: no recording was stopped after consent was withdrawn', ['error' => $e->errorType]);
+        }
     }
 }

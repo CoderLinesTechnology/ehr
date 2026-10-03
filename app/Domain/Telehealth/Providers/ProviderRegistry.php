@@ -4,13 +4,13 @@ namespace App\Domain\Telehealth\Providers;
 
 use InvalidArgumentException;
 
-/** Resolves a provider by the key stored on a session. One provider ships today; add a vendor by listing it here. */
+/** Resolves a provider by the key stored on a session. One provider ships (Daily); add a vendor by listing it here. */
 final class ProviderRegistry
 {
-    public const DEFAULT = ExternalLinkProvider::KEY;
+    public const DEFAULT = DailyProvider::KEY;
 
     /** @var array<string, class-string<MeetingProvider>> */
-    private const PROVIDERS = [ExternalLinkProvider::KEY => ExternalLinkProvider::class];
+    private const PROVIDERS = [DailyProvider::KEY => DailyProvider::class];
 
     public function get(string $key): MeetingProvider
     {

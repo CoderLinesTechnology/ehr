@@ -133,7 +133,7 @@ Each entity has one owning module; other modules reference it, never copy it.
 | Programs | programs, levels_of_care, program_staff, program_enrollments, program_enrollment_events (insert-only), program_sessions, program_session_attendance (built); requirements and outcomes later | Phase 5 (overview, admissions, levels of care, schedule, attendance built) |
 | Billing | charges, invoices, invoice lines, payments, refunds, credits, adjustments | Phase 6 |
 | Insurance | payers, policies, authorizations, eligibility, claims, remittance, denials | Phase 7 |
-| Telehealth & AI | sessions, providers, recordings, transcripts, AI processing | Phase 8 |
+| Telehealth & AI | telehealth_sessions (+ insert-only status history; one Daily room per session: `provider_room_*`, encrypted `join_url`), session_recordings (file on the private disk OR a vendor recording id), session_transcripts, session_notes (+ insert-only versions); AI processing later | Phase 8 (sessions, Daily video, consented recordings, draft transcripts, notes built) |
 | Portal, public site, booking, inquiries, waitlist | (uses scheduling engine and clients) | Phase 9 |
 | Marketing | subscribers, campaigns, suppression | Phase 10 |
 | Reporting & exports | report definitions/executions | Phase 11 |
@@ -177,6 +177,11 @@ Human-facing numbers (client number, later invoice numbers) come from `organizat
 Every external service sits behind an interface in `app/Domain/<Context>/Contracts` with a driver chosen
 by platform setting: mail (Laravel mailers), SMS, payments, telehealth video, AI, storage (Laravel
 filesystem), claims clearinghouse. Core code depends on the interface only.
+
+* **Telehealth video** = Daily.co behind `App\Domain\Telehealth\Providers\MeetingProvider` (rooms + per-viewer
+  passes; `DailyProvider`, HTTP only in `Daily\DailyClient`, configured by `config/services.php` → `daily`,
+  never called for demo data). Recording events arrive on the signature-checked `POST /webhooks/daily`
+  (`routes/webhooks.php`, outside the `web` group). Operator setup: `docs/integrations/daily.md`.
 
 ## 13. Frontend
 

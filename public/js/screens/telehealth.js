@@ -1,9 +1,11 @@
 /*
- * Telehealth screens. No dependencies, no network except the one same-origin "session started" ping.
+ * Telehealth screens. No dependencies and no network.
  *
  *  - Device preview (join page and "Test Connection"): shows YOUR camera in this tab and a microphone level.
- *    Nothing is uploaded, recorded or stored; the tracks are stopped when you leave or press Join.
- *  - Copy Meeting Link, and the join button's "started" ping.
+ *    Nothing is uploaded, recorded or stored; the tracks are stopped when you leave or press Join, so the
+ *    call page's video frame gets the camera.
+ *  - Copy Meeting Link (join and call pages): copies the client's link to the clipboard.
+ *  The call itself is Daily Prebuilt in an iframe; this script does not touch it.
  */
 (function () {
   'use strict';
@@ -128,23 +130,11 @@
   if (preview) { initPreview(preview); }
   window.addEventListener('pagehide', stopAll);
 
-  // Join: the link opens in a new tab as usual; the page also tells WellNest the session has started (and frees the camera).
+  // Join is a plain form post (the call page follows); free the camera first.
   var join = document.querySelector('[data-telehealth-join]');
-  if (join) {
-    join.addEventListener('click', function () {
-      stopAll();
-      var token = document.querySelector('meta[name="csrf-token"]');
-      try {
-        fetch(join.getAttribute('data-start-url'), {
-          method: 'POST', credentials: 'same-origin', keepalive: true,
-          headers: { 'X-CSRF-TOKEN': token ? token.content : '', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-        });
-      } catch (e) { /* the meeting still opens */ }
-    });
-  }
+  if (join) { join.addEventListener('submit', stopAll); }
 
-  var copy = document.querySelector('[data-telehealth-copy]');
-  if (copy) {
+  Array.prototype.forEach.call(document.querySelectorAll('[data-telehealth-copy]'), function (copy) {
     var label = copy.querySelector('[data-copy-label]');
     var original = label.textContent;
     copy.addEventListener('click', function () {
@@ -160,5 +150,5 @@
       try { document.execCommand('copy'); done('Link copied'); } catch (e) { done('Copy failed — select the link manually'); }
       document.body.removeChild(box);
     });
-  }
+  });
 }());

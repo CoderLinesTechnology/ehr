@@ -8,14 +8,18 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Metadata of a consented recording; the file is on the private disk and is served only through an authorized, audited route. */
+/**
+ * Metadata of a consented recording: either a file on the private disk (manual upload) or a recording the video
+ * vendor stores (Daily cloud recording, `provider_recording_id`). Both are served only through an authorized,
+ * audited route; a vendor recording through a short-lived link minted per download.
+ */
 class SessionRecording extends Model
 {
     use BelongsToOrganization, HasUuids;
 
     protected $guarded = ['*'];
 
-    protected $hidden = ['storage_path'];
+    protected $hidden = ['storage_path', 'provider_recording_id'];
 
     protected function casts(): array
     {
