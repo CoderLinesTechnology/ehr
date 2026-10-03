@@ -56,6 +56,70 @@ class ShellNavTest extends TestCase
         }
     }
 
+    public function test_account_pages_show_the_navigation_of_the_organization_last_worked_in(): void
+    {
+        $a = $this->createOrganization(['name' => 'Harbor Light']);
+        $owner = User::query()->findOrFail($a->ownerMembership->user_id);
+        $b = $this->createOrganization(['name' => 'Cedar Grove']);
+        $this->addStaff($b->organization, 'receptionist', [], $owner);   // the same person, a narrower role in B
+        $this->actingAs($owner);
+
+        $this->get(route('app.dashboard', ['organization' => $b->organization->slug]))->assertOk();
+        $html = $this->get(route('account.profile'))->assertOk()->getContent();
+        $labels = $this->labels($html);
+        $this->assertSame('Dashboard', $labels[0] ?? null, 'the account page keeps a full sidebar');
+        $this->assertStringContainsString('href="'.route('app.dashboard', ['organization' => $b->organization->slug]).'"', $html, 'links go to the organization last worked in');
+        $this->assertNotContains('Programs', $labels, 'built with the membership in THAT organization (a receptionist there: no programs.view)');
+        $this->assertStringNotContainsString('href="'.route('app.dashboard', ['organization' => $a->organization->slug]).'" class="nav-link', $html);
+
+        // Working in A again: the account pages follow (and A's owner sees its Settings).
+        $this->get(route('app.dashboard', ['organization' => $a->organization->slug]))->assertOk();
+        $html = $this->get(route('account.profile'))->assertOk()->getContent();
+        $this->assertStringContainsString('href="'.route('app.dashboard', ['organization' => $a->organization->slug]).'"', $html);
+        $this->assertContains('Programs', $this->labels($html), "A's owner holds programs.view there");
+    }
+
+    public function test_account_pages_use_the_only_organization_even_before_it_was_visited(): void
+    {
+        $created = $this->createOrganization(['name' => 'Harbor Light']);
+        $this->actingAs(User::query()->findOrFail($created->ownerMembership->user_id));
+
+        $html = $this->get(route('account.profile'))->assertOk()->getContent();
+        $this->assertSame('Dashboard', $this->labels($html)[0] ?? null);
+        $this->assertStringContainsString('href="'.route('app.dashboard', ['organization' => $created->organization->slug]).'"', $html);
+    }
+
+    public function test_a_membership_no_longer_active_is_never_borrowed_and_home_is_the_way_back(): void
+    {
+        $a = $this->createOrganization(['name' => 'Harbor Light']);
+        $owner = User::query()->findOrFail($a->ownerMembership->user_id);
+        $b = $this->createOrganization(['name' => 'Cedar Grove']);
+        $inB = $this->addStaff($b->organization, 'clinician', [], $owner);
+        $this->actingAs($owner);
+        $this->get(route('app.dashboard', ['organization' => $b->organization->slug]))->assertOk();
+
+        \Illuminate\Support\Facades\DB::table('organization_memberships')->where('id', $inB->id)->update(['status' => 'suspended']);
+        \Illuminate\Support\Facades\DB::table('organization_memberships')->where('id', $a->ownerMembership->id)->update(['status' => 'deactivated']);
+
+        $html = $this->get(route('account.profile'))->assertOk()->getContent();
+        $this->assertSame(['Home'], $this->labels($html), 'no organization to borrow: one way back');
+        $this->assertStringNotContainsString($b->organization->slug, $html);
+        $this->assertStringContainsString('href="'.route('home').'"', $html);
+    }
+
+    public function test_with_several_organizations_and_none_worked_in_the_account_pages_offer_home_and_the_switcher(): void
+    {
+        $a = $this->createOrganization(['name' => 'Harbor Light']);
+        $owner = User::query()->findOrFail($a->ownerMembership->user_id);
+        $b = $this->createOrganization(['name' => 'Cedar Grove']);
+        $this->addStaff($b->organization, 'clinician', [], $owner);
+        $this->actingAs($owner);
+
+        $html = $this->get(route('account.profile'))->assertOk()->getContent();
+        $this->assertSame(['Home'], $this->labels($html));
+        $this->assertStringContainsString('Switch organization', $html);
+    }
+
     /** @return list<string> */
     private function labels(string $html): array
     {

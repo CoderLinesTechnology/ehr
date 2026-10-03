@@ -2,16 +2,20 @@
 
 namespace App\View;
 
+use App\Domain\Identity\MembershipStatus;
 use App\Domain\Identity\PermissionResolver;
 use App\Domain\Saas\EntitlementService;
 use App\Domain\Settings\SettingsService;
 use App\Domain\Tenancy\TenantContext;
+use App\Http\Middleware\ResolveTenant;
 use App\Models\Client;
 use App\Models\Organization;
+use App\Models\OrganizationMembership;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 
 /**
@@ -76,6 +80,55 @@ final class ShellComposer
     {
         /** @var User|null $user */
         $user = $this->request->user();
+
+        // The account pages sit outside any organization. They show the navigation of the organization the user last
+        // worked in (or their only one) — built with THEIR membership there, exactly as on that organization's pages —
+        // so the sidebar never goes empty. Nothing of the organization's data is read beyond what the shell shows.
+        if ($user !== null && $this->tenant->organization() === null && $this->request->routeIs('account.*')) {
+            $context = $this->accountPagesOrganization($user);
+            if ($context !== null) {
+                [$organization, $membership] = $context;
+                URL::defaults(['organization' => $organization->slug]);
+
+                return $this->tenant->runAs($organization, fn () => $this->shellFor($user), $membership);
+            }
+        }
+
+        return $this->shellFor($user);
+    }
+
+    /**
+     * The organization whose navigation the account pages show: the one last worked in, else the user's only one —
+     * only while their membership there is active and the organization is open to them.
+     *
+     * @return array{0: Organization, 1: OrganizationMembership}|null
+     */
+    private function accountPagesOrganization(User $user): ?array
+    {
+        $last = $this->request->hasSession() ? $this->request->session()->get(ResolveTenant::LAST_ORGANIZATION_KEY) : null;
+
+        // The user's own memberships (identity, as ResolveTenant reads them): no tenant is set on these pages.
+        $membership = $this->tenant->bypass(function () use ($user, $last) {
+            $active = OrganizationMembership::query()->where('user_id', $user->id)->where('status', MembershipStatus::Active->value);
+            if (is_string($last) && ($found = (clone $active)->where('organization_id', $last)->first()) !== null) {
+                return $found;
+            }
+            $only = (clone $active)->limit(2)->get();
+
+            return $only->count() === 1 ? $only->first() : null;
+        });
+        if ($membership === null || ! $membership->isActive()) {
+            return null;
+        }
+
+        $organization = Organization::query()->find($membership->organization_id);
+
+        return $organization !== null && $organization->allowsAccess() ? [$organization, $membership] : null;
+    }
+
+    /** @return array<string, mixed> */
+    private function shellFor(?User $user): array
+    {
         $organization = $this->tenant->organization();
         $isPlatformRoute = $this->request->routeIs('platform.*');
 
@@ -96,7 +149,7 @@ final class ShellComposer
                 'isDemoDataPresent' => Client::query()->demo()->exists(),
             ] : null,
             'organizations' => $user ? $this->organizations($user, $organization) : [],
-            'nav' => $isPlatformRoute ? $this->platformNav($user) : ($organization ? $this->appNav($organization) : []),
+            'nav' => $isPlatformRoute ? $this->platformNav($user) : ($organization ? $this->appNav($organization) : $this->homeNav($user)),
             'secondaryNav' => (! $isPlatformRoute && $organization) ? $this->secondaryNav() : [],
             'searchUrl' => ($organization && Route::has('app.search')) ? route('app.search') : null,
             'accountUrl' => Route::has('account.profile') ? route('account.profile') : null,
@@ -152,6 +205,21 @@ final class ShellComposer
         }
 
         return $items;
+    }
+
+    /**
+     * Pages outside any organization with nothing to borrow (several organizations and none worked in yet, or none):
+     * one way back — "Home" resolves to the dashboard, the organization chooser or the console as fits the user.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function homeNav(?User $user): array
+    {
+        if ($user === null || ! Route::has('home') || ! $this->request->routeIs('account.*')) {
+            return [];
+        }
+
+        return [$this->item(['key' => 'home', 'label' => 'Home', 'icon' => 'house', 'route' => 'home', 'active' => ['home']])];
     }
 
     /** @return list<array<string, mixed>> */

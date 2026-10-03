@@ -20,6 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ResolveTenant
 {
+    /** Session key: the organization the user last worked in (the account pages show its navigation). */
+    public const LAST_ORGANIZATION_KEY = 'tenant.last_organization_id';
+
     public function __construct(private readonly TenantContext $tenant) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -44,6 +47,9 @@ final class ResolveTenant
 
         $this->tenant->set($organization, $membership);
         URL::defaults(['organization' => $organization->slug]);
+        if ($request->hasSession() && $request->session()->get(self::LAST_ORGANIZATION_KEY) !== $organization->id) {
+            $request->session()->put(self::LAST_ORGANIZATION_KEY, $organization->id);
+        }
 
         // Controllers receive route parameters positionally: leaving
         // {organization} in place would hand show(Client $client) the
