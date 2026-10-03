@@ -1,0 +1,208 @@
+/*
+ * WellNest design tokens — measured from docs/design/comps (05-design-system.png 1224x1285; 08-dashboard / 10-clients 1536x1024 @1x).
+ * Source key in comments:  [S]=sheet 05 pixel sample  [P]=value printed on sheet 05  [D]=08-dashboard  [C]=10-clients  [est]=estimated, not measurable.
+ * RULE: screens (D/C) win over the sheet. The sheet is rendered ~0.5x of build scale (button 20px tall on sheet vs 40px on screens) and its
+ * flat colours are over-saturated vs the printed hexes, so printed Tailwind-style hexes are kept only as comments / --spec-* fallbacks.
+ * Measurement noise: comps are soft AI renders, expect +-2px / +-3 per colour channel.
+ */
+:root {
+  /* ---------- Brand ---------- */
+  --color-primary: #307EF6;          /* [C] Add Client / Apply Filters fill, mode of 130 px; [D] same. [S] swatch #066AFD, [P] #2563EB */
+  --color-primary-hover: #2670EA;    /* [est] sheet hover == default within noise; ~8% darker */
+  --color-primary-pressed: #1F63D8;  /* [S] pressed fill #0C6AF6 is ~6% darker than default #1272FA; applied to screen blue [est] */
+  --color-primary-dark: #143B82;     /* [S] swatch #143B82, [P] #1E3A8A (logo-wordmark navy, sheet title text) */
+  --color-primary-text: #0A5AEF;     /* [C] active nav label / links darkest pixel #095AF0; [D] link #1668CE (thin 12px text) */
+  --color-link: #0A5AEF;             /* [C] "Reset", "View all" links; [D] #1668CE darkest AA pixel */
+  --color-accent-green: #09BE9C;     /* [S] swatch (logo leaf gradient), [P] #10B981 */
+  --color-accent-teal: #1DB5B1;      /* [S] swatch, [P] #14B8A6 */
+  --spec-primary-printed: #2563EB;   /* [P] kept for reference only, do NOT use for rendering */
+  --spec-primary-dark-printed: #1E3A8A; /* [P] */
+
+  /* ---------- Neutrals (printed names Gray 900..100) ---------- */
+  --gray-900: #0C1934;  /* [S] swatch, [P] #111827 */
+  --gray-700: #414E61;  /* [S] swatch, [P] #374151 */
+  --gray-500: #778190;  /* [S] swatch, [P] #6B7280 */
+  --gray-300: #C3CAD4;  /* [S] swatch, [P] #D1D5DB */
+  --gray-200: #DEE1E4;  /* [S] swatch, [P] #E5E7EB */
+  --gray-100: #EDEFF2;  /* [S] swatch, [P] #F3F4F6 */
+  --white: #FFFFFF;
+
+  /* ---------- Surfaces ---------- */
+  --bg-page: #F8FBFE;                /* [C] mode of empty page area (1000,1010); [D] #F9FBFD; [P] #F8FAFC */
+  --bg-card: #FFFFFF;                /* [C][D] stat card/table/panel interior; [P] #FFFFFF */
+  --bg-topbar: #FFFFFF;              /* [C] y0-71 */
+  --bg-sidebar: #F5F9FD;             /* [C] sidebar x0-271 (140,60 etc.); [D] #F4F8FB (gradient to ~#F4F8FB at bottom) */
+  --bg-sidebar-dark: #04214C;        /* [S] dark nav sample (40,640) #04214C, swatch #03234D; [P] #0F2747 (printed differs, sheet pixels win: only dark sidebar evidence) */
+  --bg-sidebar-dark-active: #163F71; /* [S] active "Dashboard" row in dark sidebar */
+  --bg-sidebar-dark-hover: #0F2F5C;  /* [est] between dark and active */
+  --color-text-sidebar-dark: #FFFFFF;      /* [S] labels; inactive labels ~#E3EAF5 [est] */
+  --bg-hover: #EFF6FF;               /* [P] "Hover BG"; [S] swatch #F1F8FE; [C] row/kebab hover tile #F3F7FC */
+  --bg-active-nav: #E5EFFD;          /* [C] active sidebar item fill (x19-255,y152-199); [D] #E6F0FB */
+  --bg-input: #FFFFFF;               /* [S] input interior #FEFEFE */
+  --bg-input-muted: #F5F8FC;         /* [C] topbar search / Filters button fill; [C] search table #F6F9FC */
+  --bg-input-disabled: #F0F6FC;      /* [S] disabled input fill #F0F6FC/#ECF4FC */
+  --bg-subtle: #EBF2F9;              /* [C] sidebar footer card "Better care." fill; [D] #EDF3F8 */
+  --bg-table-head: #F8FBFE;          /* [C] header row reads as page bg / white; sheet table head #F5F9FD [est] */
+  --bg-overlay: rgba(15, 39, 71, 0.45); /* [est] modal scrim, not shown on sheet */
+
+  /* ---------- Borders ---------- */
+  --border-default: #EEF3FB;         /* [C] card border y169 #EEF3FB / topbar underline #F0F4FC / sidebar divider #E9F1FB */
+  --border-sidebar: #E9F1FB;         /* [C] x271 */
+  --border-input: #E1E8F3;           /* [C] select bottom edge #EAF0F8 / left #E7EFFB; sheet inputs ~#D5E3F7 [S]; blended */
+  --border-input-strong: #C3CDE0;    /* [C] unchecked checkbox border (x323/336) */
+  --border-focus: #307EF6;           /* [S] focused input 1.5-2px blue border */
+  --border-dashed: #CFE0F7;          /* [S] file dropzone dashed border [est] */
+  --border-row: #F0F4FA;             /* [C] table row divider (700,585) #FBFCFE-#F0F4FA; [D] list divider */
+
+  /* ---------- Text ---------- */
+  --color-text-heading: #0B1735;           /* [C] h1 darkest px #000528, [D] greeting #020D29, stat number #000015 — thin strokes lighten; chosen navy-black */
+  --color-text-body: #21395C;              /* [C] client name / cell text darkest #21395C; [D] #0C1E38 for semibold item names */
+  --color-text-secondary: #475A80;         /* [C] stat label "Total Clients" #475A80; [C] nav label #40547B; [D] time #495C76 */
+  --color-text-muted: #64769A;             /* [C] page subtitle #64769A; [D] #546880 */
+  --color-text-caption: #8793B1;           /* [C] "CL-0012", "vs. last 30 days" #8693B1/#8794B1 */
+  --color-text-placeholder: #8293B1;       /* [C] search placeholder #8293B1 */
+  --color-text-on-primary: #FFFFFF;
+  --color-text-disabled: #A9B6CE;          /* [S] disabled button label [est] */
+
+  /* ---------- Semantic solids ---------- */
+  --color-success: #16B482;          /* [S] success button fill #16B082 / swatch #16B483; [P] #10B981 */
+  --color-success-text: #0F9D68;     /* [C] delta "+12%" darkest px #0F9D68 */
+  --color-info: #308AFA;             /* [S] info button fill #308AFA; [P] #3B82F6 (swatch #2090FD) */
+  --color-warning: #FEA818;          /* [S] warning button fill #FEA818; [P] #F59E0B */
+  --color-danger: #F24A4C;           /* [S] danger button fill #F24A4A; [P] #EF4444 */
+  --color-danger-text: #E5484D;      /* [D] "1 new" #E75C6F / [C] "2 overdue" red text [est] */
+  --color-purple: #8B5CF6;           /* [P] only; sheet swatch #9461FC over-saturated */
+  --color-pink: #EC4899;             /* [P] only; sheet swatch #FC4E9A */
+  --color-badge-count: #F4425C;      /* [C] nav unread badge fill 22px circle #F4425C, notification dot #FD4767 (rose-500 family) */
+
+  /* ---------- Status pills: bg + text ---------- */
+  --pill-success-bg: #D9F7EC;        /* [C] Active pill #D9F7EC; [D] Confirmed #DDF6ED; [S] #D7F7EF */
+  --pill-success-text: #12906A;      /* [C] "Active" darkest #208E6B on AA; stroke core ~#12906A */
+  --pill-active-bg: var(--pill-success-bg);
+  --pill-active-text: var(--pill-success-text);
+  --pill-confirmed-bg: var(--pill-success-bg);
+  --pill-confirmed-text: var(--pill-success-text);
+  --pill-pending-bg: #D5E7FE;        /* [C] Pending is BLUE on screens (#D5E7FE; [D] #E4F0FE). Sheet shows amber -> see --pill-warning-*. Screens win */
+  --pill-pending-text: #1F61D3;      /* [C]/[D] darkest px #1F61D3 */
+  --pill-scheduled-bg: var(--pill-pending-bg);   /* [est] same blue family as pending */
+  --pill-scheduled-text: var(--pill-pending-text);
+  --pill-upcoming-bg: var(--pill-pending-bg);    /* [est] */
+  --pill-upcoming-text: var(--pill-pending-text);
+  --pill-warning-bg: #FFF2DD;        /* [S] sheet "Pending" pill #FFF2DD / "Medium" #FDECD8 */
+  --pill-warning-text: #EA8A06;      /* [S] sheet amber text [est from #F59E0B family] */
+  --pill-inactive-bg: #EAEEF2;       /* [C] Inactive pill #EAEEF2; [S] #F6F9FC */
+  --pill-inactive-text: #6B7A90;     /* [C] grey label [est from #64769A on AA] */
+  --pill-danger-bg: #FEE6E3;         /* [S] "High Priority" fill #FEE6E3 (with 1px red border #F6A5A0 [est]); sheet table "Inactive" red pill */
+  --pill-danger-text: #E5383B;       /* [S] red label [est] */
+  --pill-info-bg: #E8F5FE;           /* [S] "Completed" pill #E8F5FE */
+  --pill-info-text: #1668CE;         /* [D] blue text darkest #1668CE */
+  --pill-tag-bg: #DAEEFF;            /* [S] Client/Clinician tags #DAEEFF, Admin #E6F0FC */
+  --pill-tag-text: #1668CE;          /* [S] [est] */
+  --pill-purple-bg: #E0D9FD;         /* [C] "DD" avatar bg #E0D9FD */
+  --pill-purple-text: #6D4BD6;       /* [C] "DD" initials [est] */
+  --pill-pink-bg: #FDE4EF;           /* [est] not rendered anywhere; derived from #EC4899 @ 15% */
+  --pill-pink-text: #D6347F;         /* [est] */
+  --pill-teal-bg: #D4F5EE;           /* [C] "MS" avatar #D4F5EE */
+  --pill-teal-text: #0F9D8A;         /* [C] initials [est] */
+
+  /* ---------- Alert row tints (sheet) ---------- */
+  --alert-success-bg: #F2FCF8;       /* [S] (530,968) */
+  --alert-success-border: #BDEBD8;   /* [est] */
+  --alert-info-bg: #F2F8FE;          /* [S] */
+  --alert-info-border: #BBD5F7;      /* [est] */
+  --alert-warning-bg: #FFF4E2;       /* [S] */
+  --alert-warning-border: #FBD9A5;   /* [est] */
+  --alert-error-bg: #FEF4F3;         /* [S] */
+  --alert-error-border: #F8C5C2;     /* [est] */
+
+  /* ---------- Icon tiles (pastel circles/rounded squares behind icons) ---------- */
+  --tile-blue: #E1EEFE;              /* [C] stat tile 1 & header tile #E2EFFE; [D] #ECF3FD (lighter, dashboard) */
+  --tile-green: #E2F8F0;             /* [C] "Active Clients" tile */
+  --tile-teal: #D4F5EE;              /* [C] MS avatar */
+  --tile-purple: #E0D9FD;            /* [C] DD avatar */
+  --tile-amber: #FDECD8;             /* [S] "Medium"/Blocked family */
+  --tile-red: #FEE6E3;               /* [S] */
+  --tile-pink: #FDE4EF;              /* [est] */
+  --tile-icon-blue: #1668CE;         /* [D] stat-card icon stroke #1668CE-ish */
+
+  /* ---------- Charts ---------- */
+  --chart-blue: #307EF6;             /* line/bars: [S] line ≈ primary */
+  --chart-blue-area: rgba(48, 126, 246, 0.14); /* [S] area gradient under line, fades to transparent [est] */
+  --chart-teal: #1DB5B1;             /* [S] donut/legend "Active" */
+  --chart-amber: #FEAA1C;            /* [S] pie orange #FEAA1C */
+  --chart-green: #13BF98;            /* [S] pie green */
+  --chart-pink: #F9A8B4;             /* [S] donut "Inactive" segment (pale red/pink) [est] */
+  --chart-grid: #E8EEF7;             /* [est] */
+  --chart-axis-text: #8793B1;        /* [est] same as caption */
+  --legend-appointment: #18ABFA;     /* [S] calendar legend */
+  --legend-telehealth: #D26BE4;      /* [S] */
+  --legend-blocked: #FEC37B;         /* [S] */
+  --legend-unavailable: #F9D6D2;     /* [S] */
+  --legend-available: #11C399;       /* [S] */
+
+  /* ---------- Fonts ---------- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* [P] "Inter (Google Fonts)" — self-host, no CDN */
+  --font-weight-light: 300;          /* [P] */
+  --font-weight-regular: 400;        /* [P] */
+  --font-weight-medium: 500;         /* [P] */
+  --font-weight-semibold: 600;       /* [P] */
+  --font-weight-bold: 700;           /* [P] */
+  --font-weight-extrabold: 800;      /* [P] */
+
+  /* Type scale: size [P] sheet table; line-height [est] (not printed); weight [S/C] observed */
+  --text-h1: 2rem;      --lh-h1: 2.5rem;     --fw-h1: 700;  /* 32px */
+  --text-h2: 1.75rem;   --lh-h2: 2.25rem;    --fw-h2: 600;  /* 28px; [C] page title "Clients" cap-height 20px => 27-28px, weight ~600 */
+  --text-h3: 1.5rem;    --lh-h3: 2rem;       --fw-h3: 600;  /* 24px; [C] stat numbers "48" digit height 17-18px => 24px */
+  --text-h4: 1.25rem;   --lh-h4: 1.75rem;    --fw-h4: 600;  /* 20px */
+  --text-h5: 1.125rem;  --lh-h5: 1.625rem;   --fw-h5: 600;  /* 18px; [D] card titles "Upcoming Appointments" ~18px */
+  --text-h6: 1rem;      --lh-h6: 1.5rem;     --fw-h6: 600;  /* 16px */
+  --text-body: 0.875rem;   --lh-body: 1.25rem;  --fw-body: 400; /* 14px; [C] nav/buttons/labels ascender height 10-11px => 14px */
+  --text-small: 0.75rem;   --lh-small: 1rem;    --fw-small: 400; /* 12px; [C] table head, delta, pill text */
+  --text-xsmall: 0.6875rem; --lh-xsmall: 1rem;  --fw-xsmall: 400; /* 11px; [C] "CL-0012", "Showing 1-8 of 48" */
+  --text-caption: 0.625rem; --lh-caption: 0.875rem; --fw-caption: 400; /* 10px */
+
+  /* ---------- Spacing ([P] printed scale 0..9) ---------- */
+  --space-0: 0px;  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;  --space-9: 96px;
+  --grid-columns: 12;                /* [P] */
+  --grid-gutter: 24px;               /* [P] printed; NOTE [C] card-to-card gap measured 17-18px, see spec */
+  --grid-margin: 24px;               /* [P] printed; NOTE [C] content left/right inset 31/29px, see spec */
+  --layout-card-gap: 18px;           /* [C] gap between stat cards (549->568, 833->851, 1117->1134) */
+  --layout-page-pad: 31px;           /* [C] content x303 - sidebar 272; right inset 1536-1507=29; [D] x309 (37) */
+
+  /* ---------- Radii ---------- */
+  --radius-input: 8px;               /* [C] search input curve ends at row 7 => 8px; filter selects ~8 [est] */
+  --radius-button: 8px;              /* [C] Add Client curve ends row 6-7 => 8px */
+  --radius-card: 12px;               /* [C] stat card curve ends row ~10-11 => 12px */
+  --radius-nav-item: 8px;            /* [C] active nav item curve ends row 6 => 8px */
+  --radius-pill: 999px;              /* [C][S] status pills, tags */
+  --radius-avatar: 999px;            /* [C] */
+  --radius-icon-tile: 999px;         /* [D] dashboard stat tiles are circles; [C] stat tiles look rounded ~12px — see spec open question */
+  --radius-icon-tile-square: 12px;   /* [C] alternative reading */
+  --radius-checkbox: 4px;            /* [C] 14px box [est] */
+  --radius-pagination: 6px;          /* [C] 24px box [est] */
+  --radius-modal: 16px;              /* [S] modal/drawer cards look ~2x card radius at sheet scale [est] */
+  --radius-bubble: 14px;             /* [S] chat bubble [est] */
+
+  /* ---------- Shadows (all [est]; edges sampled: card bottom y336-340 only ~3-8 levels darker than page bg => very soft) ---------- */
+  --shadow-card: 0 1px 2px rgba(30, 58, 138, 0.04), 0 4px 12px rgba(30, 58, 138, 0.04);
+  --shadow-dropdown: 0 8px 24px rgba(15, 39, 71, 0.12), 0 2px 6px rgba(15, 39, 71, 0.06);
+  --shadow-modal: 0 20px 48px rgba(15, 39, 71, 0.20), 0 4px 12px rgba(15, 39, 71, 0.08);
+  --shadow-button-primary: 0 1px 2px rgba(48, 126, 246, 0.25); /* [S] soft glow under blue buttons */
+
+  /* ---------- Containers ([P]) ---------- */
+  --container-xs: 480px;  --container-sm: 640px;  --container-md: 768px;
+  --container-lg: 1024px; --container-xl: 1280px; --container-2xl: 1536px;
+  --sidebar-width: 272px;            /* [C] x0-271 (divider at 271); [D] 276 incl. divider */
+  --topbar-height: 72px;             /* [C] y0-71, 1px border at 72 */
+
+  /* ---------- Control heights (build scale = sheet x2, confirmed on screens) ---------- */
+  --control-h: 40px;                 /* [C] Add Client 100-140; [C] topbar search 18-57; sheet button 20px x2 */
+  --control-h-compact: 32px;         /* [C] Filters button 371-404 (33), Apply 911-941, filter selects 438-467 (30) */
+  --icon-size: 20px;                 /* [C] nav icons ~20-22px, Lucide stroke 1.75-2 */
+  --icon-size-sm: 16px;              /* [C] table contact icons */
+
+  /* ---------- Focus ring ---------- */
+  --focus-ring: 0 0 0 3px rgba(48, 126, 246, 0.25);  /* [S] focused input: 1.5px primary border + soft 3px halo [est alpha] */
+  --focus-ring-color: #307EF6;
+}

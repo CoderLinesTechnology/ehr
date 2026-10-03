@@ -88,6 +88,10 @@ final class SettingsRegistry
             new SettingDefinition('general.week_starts_on', $o, $T::TYPE_ENUM, '1', 'general', 'Week starts on',
                 options: ['1' => 'Monday', '7' => 'Sunday']),
 
+            // ── Organization: branding ──────────────────────────────────────
+            new SettingDefinition('branding.primary_color', $o, $T::TYPE_COLOR, '#2563EB', 'branding', 'Primary color'),
+            new SettingDefinition('branding.secondary_color', $o, $T::TYPE_COLOR, '#93C5FD', 'branding', 'Secondary color'),
+
             // ── Organization: scheduling ────────────────────────────────────
             new SettingDefinition('scheduling.default_duration_minutes', $o, $T::TYPE_INT, 50, 'scheduling', 'Default appointment length (minutes)',
                 help: 'Pre-filled when creating a service.', min: 5, max: 480),

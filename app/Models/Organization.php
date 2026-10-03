@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * The tenant. Status is written only by ChangeOrganizationStatus.
  */
 #[Fillable([
-    'name', 'legal_name', 'email', 'phone', 'website',
+    'name', 'legal_name', 'tagline', 'description', 'email', 'phone', 'website',
     'address_line1', 'address_line2', 'city', 'region', 'postal_code', 'country_code',
     'timezone', 'currency', 'locale',
 ])]

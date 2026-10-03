@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * A user's place in one organization (staff seat). Status, invitation and
  * role assignment are written by the Identity domain actions only.
  */
-#[Fillable(['title', 'credentials', 'is_provider', 'color'])]
+#[Fillable(['name_prefix', 'title', 'credentials', 'is_provider', 'color'])]
 class OrganizationMembership extends Model
 {
     /** @use HasFactory<OrganizationMembershipFactory> */
@@ -68,6 +68,12 @@ class OrganizationMembership extends Model
         $user = $this->relationLoaded('user') ? $this->user : $this->user()->first();
 
         return $user?->name ?? '—';
+    }
+
+    /** "Dr. Sarah Carter" — the name with its honorific, as shown on schedules. */
+    public function professionalName(): string
+    {
+        return trim(($this->name_prefix ? $this->name_prefix.' ' : '').$this->displayName());
     }
 
     /** Active staff who can be booked for appointments. */

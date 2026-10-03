@@ -95,7 +95,7 @@ final class RoleTemplates
                 'permissions' => [
                     'platform.dashboard.view', 'platform.organizations.view', 'platform.organizations.manage',
                     'platform.organizations.lifecycle', 'platform.plans.manage', 'platform.subscriptions.manage',
-                    'platform.features.manage', 'platform.users.view', 'platform.users.manage', 'platform.audit.view', 'platform.support.act',
+                    'platform.features.manage', 'platform.users.view', 'platform.audit.view', 'platform.support.act',
                 ],
             ],
             'platform_support' => [

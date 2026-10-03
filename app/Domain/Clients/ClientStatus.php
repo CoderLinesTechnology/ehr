@@ -8,6 +8,8 @@ enum ClientStatus: string
 {
     use LabelledEnum;
 
+    /** Registered, intake not yet complete (not counted as an active client). */
+    case Pending = 'pending';
     case Active = 'active';
     case Inactive = 'inactive';
     case Archived = 'archived';
@@ -16,6 +18,7 @@ enum ClientStatus: string
     {
         return match ($this) {
             self::Active => 'success',
+            self::Pending => 'info',
             self::Inactive => 'warning',
             self::Archived => 'neutral',
         };

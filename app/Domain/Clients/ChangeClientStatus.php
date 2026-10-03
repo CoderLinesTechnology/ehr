@@ -28,6 +28,7 @@ final class ChangeClientStatus
 {
     /** Allowed moves. Restoring an archived client is always to active. */
     private const TRANSITIONS = [
+        'pending' => ['active', 'inactive', 'archived'],
         'active' => ['inactive', 'archived'],
         'inactive' => ['active', 'archived'],
         'archived' => ['active'],
@@ -62,7 +63,7 @@ final class ChangeClientStatus
                 throw new DomainException("A client who is {$from->label()} cannot be changed to {$to->label()}.", 'invalid_transition');
             }
 
-            if ($reason === null && $to !== ClientStatus::Active) {
+            if ($reason === null && in_array($to, [ClientStatus::Inactive, ClientStatus::Archived], true)) {
                 throw new DomainException(
                     'Give a reason to '.($to === ClientStatus::Archived ? 'archive' : 'mark inactive').' this client.',
                     'reason_required',
@@ -98,6 +99,7 @@ final class ChangeClientStatus
                     ClientStatus::Archived => 'Client archived',
                     ClientStatus::Inactive => 'Client marked inactive',
                     ClientStatus::Active => $from === ClientStatus::Archived ? 'Client restored' : 'Client marked active',
+                    ClientStatus::Pending => 'Client marked pending',
                 },
                 subject: $locked,
                 actorUserId: $actor?->id,

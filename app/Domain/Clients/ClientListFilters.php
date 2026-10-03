@@ -64,10 +64,11 @@ final readonly class ClientListFilters
     {
         return match ($this->status) {
             'active' => ['active'],
+            'pending' => ['pending'],
             'inactive' => ['inactive'],
             'archived' => ['archived'],
             'all' => ClientStatus::values(),
-            default => ['active', 'inactive'],
+            default => ['pending', 'active', 'inactive'],
         };
     }
 }

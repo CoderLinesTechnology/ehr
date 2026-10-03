@@ -33,6 +33,8 @@ final readonly class SettingDefinition
 
     public const TYPE_SECRET = 'secret';
 
+    public const TYPE_COLOR = 'color';
+
     /**
      * @param  'platform'|'organization'  $scope
      * @param  array<string, string>  $options  value => label (enum / list types)
@@ -78,6 +80,7 @@ final readonly class SettingDefinition
             self::TYPE_URL => ['url:https,http', 'max:500'],
             self::TYPE_TIME => ['date_format:H:i'],
             self::TYPE_LIST => ['array'],
+            self::TYPE_COLOR => ['regex:/^#[0-9A-Fa-f]{6}$/'],
             default => [],
         };
 

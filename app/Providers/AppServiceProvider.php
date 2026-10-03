@@ -46,6 +46,12 @@ class AppServiceProvider extends ServiceProvider
         TenantBlueprint::register();
 
         Date::use(CarbonImmutable::class);
+
+        // Local design verification only: render the app "as of" the comps'
+        // date (APP_FAKE_NOW="2025-04-28 08:30:00"). Never honoured elsewhere.
+        if ($this->app->isLocal() && is_string($fakeNow = env('APP_FAKE_NOW')) && $fakeNow !== '') {
+            Date::setTestNow(CarbonImmutable::parse($fakeNow, 'UTC'));
+        }
         Model::shouldBeStrict(! $this->app->isProduction());
 
         // Short, stable aliases in polymorphic columns (audit, timeline).
