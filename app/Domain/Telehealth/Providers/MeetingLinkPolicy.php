@@ -34,7 +34,8 @@ final class MeetingLinkPolicy
     {
         $url = trim($url);
 
-        if ($url === '' || mb_strlen($url) > self::MAX_LENGTH || preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
+        // A backslash is refused anywhere: browsers read it as "/" in an https URL, parse_url does not.
+        if ($url === '' || mb_strlen($url) > self::MAX_LENGTH || preg_match('/[\x00-\x20\x7f\\\\]/', $url) === 1) {
             throw new DomainException('Enter the meeting link as one https address.', 'meeting_link_invalid', $field);
         }
 
@@ -46,8 +47,10 @@ final class MeetingLinkPolicy
             throw new DomainException('That meeting link is not accepted.', 'meeting_link_invalid', $field);
         }
 
+        // The host must be a plain DNS name before it is compared, so "%2F" or other characters parse_url leaves in
+        // the host cannot put a different host in front of an allowed suffix.
         $host = rtrim(strtolower($parts['host']), '.');
-        if (! self::hostAllowed($host, $allowedHosts)) {
+        if (! self::isHostName($host) || ! self::hostAllowed($host, $allowedHosts)) {
             throw new DomainException('That video service is not on your organization\'s list of allowed meeting hosts.', 'meeting_link_host', $field);
         }
 
@@ -102,6 +105,11 @@ final class MeetingLinkPolicy
             $host === 'teams.microsoft.com' || $host === 'teams.live.com' => 'Microsoft Teams',
             default => 'Video',
         };
+    }
+
+    private static function isHostName(string $host): bool
+    {
+        return preg_match('/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/', $host) === 1;
     }
 
     /** @param list<string> $patterns */

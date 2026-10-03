@@ -30,3 +30,6 @@ x302–1178, 1px `#f1f5fd`, radius 12, padding 10/16. Title "Upcoming Telehealth
 * The comp's tab reads "Upcoming (5)" over a list of six rows (its sixth row, Emily Johnson's 28 Apr session, is the completed one in comp 06); the app counts what it lists.
 * Cards the member cannot use (no `telehealth.manage`, no calendar permission) are left out, like nav items.
 * The comp's side nav shows Tasks/Documents/Reports; those modules do not exist yet, so the app nav (shell, not this screen) shows fewer items.
+
+## Verification
+Fixture at `APP_FAKE_NOW="2025-04-28 09:55:00"`, comp size 1536x1024, with the fixture's other telehealth sessions set aside and Emily's session upcoming (see the comp's own inconsistency above). Region metrics (MAE / % differing / SSIM): header + cards 4.87 / 4.9 / 0.82; tabs + list 6.69 / 6.5 / 0.72; rail 5.99 / 5.1 / 0.76; whole page 5.56 / 5.1 / 0.76. List geometry matches within 1 px (row separators at y 619, 694, 769, 844, 920 vs the comp's 618, 693.5, 769, 844.5, 920.5); text ink widths within ±3%. Differences left: the comp's Join buttons on rows 2–5 (the app shows View outside the join window), "Upcoming (6)" vs the comp's "(5)", avatar initials (EJ vs the comp's EM), the shell's nav items (modules not built). Phone 390px: no horizontal scroll.

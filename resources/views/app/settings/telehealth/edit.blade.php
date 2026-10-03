@@ -9,7 +9,7 @@
         </x-ui.alert>
         <section class="set-card">
             <div class="set-fields">
-                <x-ui.field label="Default meeting link" name="default_link" id="th-default-link" help="Used for telehealth appointments that have no link of their own. Stored encrypted and never shown again; leave empty to keep the current one.">
+                <x-ui.field label="Default meeting link" name="default_link" id="th-default-link" help="Used for telehealth appointments that have no link of their own. Stored encrypted and never shown again; leave empty to keep the current one. Everyone who has the link enters the same room, so switch on the video service's waiting room.">
                     <x-ui.input type="url" name="default_link" id="th-default-link" value="" placeholder="{{ $hasDefaultLink ? 'A default link is saved — paste a new one to replace it' : 'https://' }}" autocomplete="off" />
                 </x-ui.field>
                 @if ($hasDefaultLink)

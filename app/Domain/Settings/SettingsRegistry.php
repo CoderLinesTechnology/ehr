@@ -115,7 +115,7 @@ final class SettingsRegistry
 
             // ── Organization: telehealth ────────────────────────────────────
             new SettingDefinition('telehealth.default_link_secret', $o, $T::TYPE_SECRET, null, 'telehealth', 'Default meeting link',
-                help: 'An https Zoom, Google Meet or Microsoft Teams link used for telehealth appointments that have none of their own. Stored encrypted; WellNest only shows it to staff who may join the session.', nullable: true),
+                help: 'An https Zoom, Google Meet or Microsoft Teams link used for telehealth appointments that have none of their own. Stored encrypted; WellNest only shows it to staff who may join the session. Everyone who has the link enters the same room, so switch on the video service\'s waiting room.', nullable: true),
             new SettingDefinition('telehealth.allowed_hosts', $o, $T::TYPE_TEXT, "zoom.us\n*.zoom.us\nmeet.google.com\nteams.microsoft.com", 'telehealth', 'Allowed meeting-link hosts',
                 help: 'One host per line; *.example.com allows its sub-domains. A meeting link on any other host is refused.'),
             new SettingDefinition('telehealth.join_early_minutes', $o, $T::TYPE_INT, 15, 'telehealth', 'Join opens (minutes before the start)',

@@ -41,7 +41,10 @@ final class SessionDetailsReader
                 $version = $note->latest_version;
             }
             $recordings = $session->recordings()->whereNull('purged_at')->get()->all();
-            $transcripts = $session->transcripts()->get()->all();
+            // The page lists transcripts by label and status: never load their (up to 500 KB) text for that.
+            $transcripts = $session->transcripts()
+                ->select(['id', 'organization_id', 'record_environment', 'telehealth_session_id', 'session_recording_id', 'consented', 'source', 'status', 'reviewed_by_user_id', 'reviewed_at', 'created_at', 'updated_at'])
+                ->get()->all();
         }
 
         $early = min($this->settings->joinEarlyMinutes($organization), TelehealthSettings::MAX_EARLY_MINUTES);

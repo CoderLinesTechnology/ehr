@@ -258,7 +258,7 @@
 .tj-before p > span, .tj-help p > span, .tj-thanks p > span { display: block; }
 .tj-before > .icon { fill: #2eaa6e; stroke: #2eaa6e; }
 .tj-before > .icon path:last-child { fill: none; stroke: #fff; }
-.tj-help { display: flex; gap: 21px; min-height: 165px; padding: 21px 30px 0 28.5px; }
+.tj-help { display: flex; gap: 21px; min-height: 165px; padding: 21px 30px 18px 28.5px; }
 .tj-help__q { display: grid; flex: none; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: #0b1b4e; color: #fff; font-size: 14px; font-weight: 700; line-height: 1; }
 .tj-help h2 { margin: 3px 0 0; color: #00063a; font-size: 14.2px; font-weight: 500; line-height: 20px; }
 .tj-help p { margin: 4px 0 0; color: #36558c; font-size: 11.2px; line-height: 20px; }
@@ -330,11 +330,11 @@ a.ts-tile:hover, .ts-more[open] .ts-tile { background: #eef4fc; color: #243f72; 
 .ts-facts dt { color: #6a7aa0; font-size: 10.4px; line-height: 16px; }
 .ts-facts dd { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: #1d396a; font-size: 11.1px; font-weight: 500; line-height: 18px; }
 .ts-facts dd .icon { color: #243f72; }
-.ts-notes { display: flex; flex-direction: column; padding: 8px 11px 14px 9px; border: 1px solid #eef3fa; border-radius: 12px; background: #f5f9fe; min-height: 220px; }
+.ts-notes { display: flex; flex-direction: column; padding: 8px 11px 14px 9px; border: 1px solid #eef3fa; border-radius: 12px; background: #f7fafe; min-height: 220px; }
 .ts-notes__label { margin: 0 0 0 1px; color: #6a7aa0; font-size: 10.1px; line-height: 16px; }
 .ts-notes__form { position: relative; flex: 1; display: flex; margin-top: 3px; }
 .ts-notes__field {
-  display: block; flex: 1; width: 100%; min-height: 176px; margin: 0; padding: 10px 12px 36px 9px; border: 0; border-radius: 8px; background: #e7f0fa; color: #32487c;
+  display: block; flex: 1; width: 100%; min-height: 176px; margin: 0; padding: 9px 12px 36px 8px; border: 1px solid #eef4fc; border-radius: 8px; background: #f5f9fe; color: #32487c;
   font: inherit; font-size: 12.5px; line-height: 20.5px; resize: none; overflow: auto;
 }
 .ts-notes__field::placeholder { color: #7889ad; opacity: 1; }

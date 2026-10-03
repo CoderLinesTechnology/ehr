@@ -36,6 +36,10 @@ class MeetingLinkTest extends TelehealthTestCase
         yield 'lookalike suffix' => ['https://zoom.us.evil.example/j/1'];
         yield 'lookalike prefix' => ['https://evilzoom.us/j/1'];
         yield 'credentials in the url' => ['https://zoom.us@evil.example/j/1'];
+        // parse_url keeps these inside the host, so the suffix matched; browsers read "\" as "/" and go to evil.example.
+        yield 'backslash before an allowed suffix' => ['https://evil.example\\.zoom.us/j/1'];
+        yield 'encoded slash before an allowed suffix' => ['https://evil.example%2F.zoom.us/j/1'];
+        yield 'backslash in the path' => ['https://zoom.us\\j\\1'];
         yield 'userinfo with the real host' => ['https://user:pw@zoom.us/j/1'];
         yield 'odd port' => ['https://zoom.us:8443/j/1'];
         yield 'host not on the list' => ['https://example.com/meeting'];

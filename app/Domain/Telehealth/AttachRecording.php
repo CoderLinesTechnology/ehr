@@ -70,6 +70,7 @@ final class AttachRecording
             throw new DomainException('Only audio or video recordings (WAV, MP3, M4A, MP4, WebM, MOV, OGG) can be attached.', 'recording_type', 'recording');
         }
 
+        $sha256 = hash_file('sha256', $path); // before the transaction: hashing up to 300 MB must not hold the row lock
         $stored = "telehealth/{$organization->id}/{$session->id}/".Str::uuid7()->toString().'.'.self::TYPES[$mime];
         $stream = fopen($path, 'rb');
         Storage::disk(self::DISK)->put($stored, $stream);
@@ -78,7 +79,7 @@ final class AttachRecording
         }
 
         try {
-            return DB::transaction(function () use ($session, $stored, $mime, $size, $path, $durationSeconds, $actor) {
+            return DB::transaction(function () use ($session, $stored, $mime, $size, $sha256, $durationSeconds, $actor) {
                 $locked = TelehealthSession::query()->lockForUpdate()->findOrFail($session->id);
                 if (! $locked->consent_to_record) {
                     throw new DomainException('Record the client\'s consent before attaching a recording.', 'consent_required', 'recording');
@@ -94,7 +95,7 @@ final class AttachRecording
                     'mime' => $mime,
                     'size_bytes' => $size,
                     'duration_seconds' => $durationSeconds,
-                    'sha256' => hash_file('sha256', $path),
+                    'sha256' => $sha256,
                     'created_by_user_id' => $actor?->id,
                 ])->save();
 

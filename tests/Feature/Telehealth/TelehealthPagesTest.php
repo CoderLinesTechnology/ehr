@@ -41,6 +41,17 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->reception = $this->addStaff($this->organization, 'receptionist');   // no telehealth permission at all
     }
 
+    private function finished(): TelehealthSession
+    {
+        $session = $this->sessionAt('2026-10-02 08:00:00');
+        $this->travelTo(CarbonImmutable::parse('2026-10-02 08:00:00', 'UTC'));
+        app(OpenSession::class)($session, $this->actor);
+        $this->travelTo(CarbonImmutable::parse('2026-10-02 09:00:00', 'UTC'));
+        app(EndSession::class)($session, $this->actor);
+
+        return $session->refresh();
+    }
+
     private function index(array $query = []): TestResponse
     {
         return $this->get($this->url('app.telehealth.index', $query));
@@ -188,6 +199,7 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString('8:05 AM – 9:05 AM', $html);
         $this->assertStringContainsString('Zoom Meeting', $html);
         $this->assertStringContainsString('Ready to join?', $html);
+        $this->assertStringContainsString('<p class="tj-head__text">Your session is ready. Click the button below to join.</p>', $html);
         $this->assertStringContainsString('data-telehealth-preview', $html);
         $this->assertStringContainsString('<a href="'.e(self::LINK).'" target="_blank" rel="noopener noreferrer" class="tj-join"', $html);
         $this->assertStringContainsString('data-url="'.e(self::LINK).'"', $html);
@@ -204,6 +216,8 @@ class TelehealthPagesTest extends TelehealthTestCase
 
         $this->assertStringContainsString('tj-join is-disabled', $html);
         $this->assertStringContainsString('You can join from', $html);
+        $this->assertStringContainsString('<p class="tj-head__text">You can join from', $html, 'the headline says when it opens too');
+        $this->assertStringNotContainsString('Your session is ready', $html);
         $this->assertStringNotContainsString('target="_blank"', $html);
     }
 
@@ -212,7 +226,8 @@ class TelehealthPagesTest extends TelehealthTestCase
     {
         $session = $this->sessionAt('2026-10-02 08:05:00', link: null);
 
-        $this->as($this->drA)->get($this->joinUrl($session))->assertOk()->assertSee('Paste the Zoom, Google Meet or Microsoft Teams link', false)->assertSee('Save link');
+        $this->as($this->drA)->get($this->joinUrl($session))->assertOk()->assertSee('Paste the Zoom, Google Meet or Microsoft Teams link', false)->assertSee('Save link')
+            ->assertSee('Add the meeting link below to get this session ready.')->assertDontSee('Your session is ready');
 
         $this->put($this->url('app.telehealth.link', ['session' => $session->id]), ['join_url' => 'http://zoom.us/j/1'])
             ->assertSessionHasErrors('join_url');
@@ -407,6 +422,22 @@ class TelehealthPagesTest extends TelehealthTestCase
 
         $this->assertSame($one, $three);
         $this->assertLessThanOrEqual(30, $three);
+    }
+
+    #[Test]
+    public function opening_the_clinical_content_of_a_session_is_audited_and_a_page_without_it_is_not(): void
+    {
+        $session = $this->finished();
+        $show = $this->url('app.telehealth.show', ['session' => $session->id]);
+
+        $this->as($this->manager)->get($show)->assertOk(); // sees the session, not its notes or recordings
+        $this->assertSame(0, DB::table('audit_logs')->where('action', 'telehealth.session_clinical_viewed')->count());
+
+        $this->as($this->drA)->get($show)->assertOk();
+        $entry = DB::table('audit_logs')->where('action', 'telehealth.session_clinical_viewed')->first();
+        $this->assertNotNull($entry);
+        $this->assertSame($session->id, $entry->subject_id);
+        $this->assertSame($this->drA->user_id, $entry->actor_user_id);
     }
 
     #[Test]

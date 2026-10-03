@@ -5,6 +5,13 @@
     $running = $session->status === \App\Domain\Telehealth\SessionStatus::InProgress;
     $canJoinNow = $details->hasLink && $joinUrl !== null && ($details->joinWindowOpen || $running);
     $opensAt = \App\Domain\Telehealth\JoinWindow::opensAt($details->startsAt, $details->joinEarlyMinutes);
+    $headline = match (true) {
+        $running => 'This session is in progress. You can rejoin below.',
+        $canJoinNow => 'Your session is ready. Click the button below to join.',
+        ! $details->hasLink || $joinUrl === null => 'Add the meeting link below to get this session ready.',
+        now()->greaterThanOrEqualTo($details->endsAt) => 'The time for this session has passed.',
+        default => 'You can join from '.$format->time($opensAt, $details->timezone).'.',
+    };
 @endphp
 <x-layouts.app title="Join Telehealth Session">
     @push('styles')
@@ -22,7 +29,7 @@
                 <span class="tj-head__tile"><x-ui.icon name="video" :size="28" :stroke="2" /></span>
                 <div>
                     <h1 class="tj-head__title" id="tj-title">Join Telehealth Session</h1>
-                    <p class="tj-head__text">{{ $running ? 'This session is in progress. You can rejoin below.' : 'Your session is ready. Click the button below to join.' }}</p>
+                    <p class="tj-head__text">{{ $headline }}</p>
                 </div>
             </header>
 

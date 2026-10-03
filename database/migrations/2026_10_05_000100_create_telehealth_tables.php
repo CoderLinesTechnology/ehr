@@ -10,11 +10,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Lets telehealth rows reference an appointment AND its live/demo environment in one composite key,
-        // so a demo session can never point at a live appointment.
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->unique(['organization_id', 'id', 'record_environment'], 'appointments_org_id_env_unique');
-        });
+        // The appointments (organization, id, record_environment) key these FKs rely on is built concurrently by the
+        // migration before this one (2026_10_05_000090_index_appointments_environment_key).
 
         // One video session per telehealth appointment. The meeting link is encrypted at rest and never written to audit.
         Schema::create('telehealth_sessions', function (Blueprint $table) {
@@ -190,8 +187,5 @@ return new class extends Migration
         Schema::dropIfExists('session_recordings');
         Schema::dropIfExists('telehealth_session_status_histories');
         Schema::dropIfExists('telehealth_sessions');
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->dropUnique('appointments_org_id_env_unique');
-        });
     }
 };
