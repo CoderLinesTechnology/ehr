@@ -2,15 +2,20 @@
 
 namespace Tests\Feature\Telehealth;
 
+use App\Domain\Scheduling\AppointmentSource;
 use App\Domain\Scheduling\AppointmentStatus;
+use App\Domain\Scheduling\CancellationKind;
 use App\Domain\Scheduling\Modality;
 use App\Domain\Scheduling\RescheduleAppointment;
 use App\Domain\Scheduling\RescheduleAppointmentData;
 use App\Domain\Scheduling\TransitionAppointment;
 use App\Domain\Shared\RecordEnvironment;
+use App\Domain\Telehealth\EndSession;
 use App\Domain\Telehealth\EnsureTelehealthSession;
+use App\Domain\Telehealth\OpenSession;
 use App\Domain\Telehealth\SessionStatus;
-use App\Domain\Scheduling\CancellationKind;
+use App\Domain\Telehealth\SetMeetingLink;
+use App\Domain\Telehealth\SyncTelehealthSession;
 use App\Models\Appointment;
 use App\Models\Client;
 use App\Models\TelehealthSession;
@@ -89,7 +94,7 @@ class SessionSyncTest extends TelehealthTestCase
 
         $replacement = app(RescheduleAppointment::class)(new RescheduleAppointmentData(
             appointment: $original, startsAt: CarbonImmutable::parse('2026-10-07 14:00:00', 'UTC'), clinician: $this->drA,
-            source: \App\Domain\Scheduling\AppointmentSource::Staff, actor: $this->actor,
+            source: AppointmentSource::Staff, actor: $this->actor,
         ));
 
         $this->assertSame(SessionStatus::Cancelled, $old->refresh()->status);
@@ -104,12 +109,12 @@ class SessionSyncTest extends TelehealthTestCase
     {
         $session = $this->sessionAt('2026-10-06 10:00:00');
         $this->travelTo(CarbonImmutable::parse('2026-10-06 10:05:00', 'UTC'));
-        app(\App\Domain\Telehealth\OpenSession::class)($session, $this->actor);
-        app(\App\Domain\Telehealth\EndSession::class)($session, $this->actor);
+        app(OpenSession::class)($session, $this->actor);
+        app(EndSession::class)($session, $this->actor);
 
         // The appointment is completed too; syncing again changes nothing and adds no history.
         $before = TelehealthSessionStatusHistory::query()->count();
-        app(\App\Domain\Telehealth\SyncTelehealthSession::class)(Appointment::query()->findOrFail($session->appointment_id), null, $this->actor);
+        app(SyncTelehealthSession::class)(Appointment::query()->findOrFail($session->appointment_id), null, $this->actor);
 
         $this->assertSame(SessionStatus::Completed, $session->refresh()->status);
         $this->assertSame($before, TelehealthSessionStatusHistory::query()->count());
@@ -154,6 +159,6 @@ class SessionSyncTest extends TelehealthTestCase
 
     private function setSessionLink(TelehealthSession $session, string $url): void
     {
-        app(\App\Domain\Telehealth\SetMeetingLink::class)($session, $url, $this->actor);
+        app(SetMeetingLink::class)($session, $url, $this->actor);
     }
 }

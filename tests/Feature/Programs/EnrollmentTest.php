@@ -378,4 +378,35 @@ class EnrollmentTest extends ProgramsTestCase
             ->assertRedirect($this->url('app.programs.show', ['program' => $program->id, 'tab' => 'participants']));
         $this->assertSame(1, DB::table('program_enrollments')->where('program_id', $program->id)->count());
     }
+
+    #[Test]
+    public function the_transfer_and_level_forms_validate_their_input_instead_of_failing(): void
+    {
+        $program = $this->program();
+        $one = $this->level($program, 'Level I');
+        $enrollment = $this->admit($program, $this->client(), $one);
+        $base = ['program' => $program->id, 'enrollment' => $enrollment->id];
+
+        $this->as($this->admin)->post($this->url('app.programs.enrollments.transfer', $base), [])->assertSessionHasErrors('program_id');
+        $this->post($this->url('app.programs.enrollments.level', $base), ['level_id' => (string) Str::uuid()])->assertSessionHasErrors('reason');
+        $this->post($this->url('app.programs.enrollments.discharge', $base), ['outcome' => 'banana'])->assertSessionHasErrors('outcome');
+        $this->assertSame('active', $enrollment->fresh()->status->value);
+        $this->assertCount(1, $this->events($enrollment));
+    }
+
+    #[Test]
+    public function repeating_a_transition_is_a_no_op_with_no_second_history_row_or_audit_entry(): void
+    {
+        $enrollment = $this->admit($this->program(), $this->client());
+
+        $this->doAs(fn () => app(PutEnrollmentOnHold::class)($enrollment, 'travelling'));
+        $this->doAs(fn () => app(PutEnrollmentOnHold::class)($enrollment, 'travelling'));   // a double click
+        $this->assertCount(2, $this->events($enrollment));
+        $this->assertCount(1, $this->auditEntries('program_enrollment.put_on_hold'));
+
+        $this->doAs(fn () => app(ResumeEnrollment::class)($enrollment));
+        $this->doAs(fn () => app(ResumeEnrollment::class)($enrollment));
+        $this->assertCount(3, $this->events($enrollment));
+        $this->assertSame('active', $enrollment->fresh()->status->value);
+    }
 }

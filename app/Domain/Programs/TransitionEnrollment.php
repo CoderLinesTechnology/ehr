@@ -53,7 +53,9 @@ final class TransitionEnrollment
         return DB::transaction(function () use ($enrollment, $type, $to, $toLevel, $reason, $authorizedBy, $relatedEnrollmentId) {
             /** @var ProgramEnrollment $locked */
             $locked = ProgramEnrollment::query()->whereKey($enrollment->id)->lockForUpdate()->firstOrFail();
-            $program = Program::query()->findOrFail($locked->program_id);
+            // A shared lock on the program: a level of care cannot be switched off (SaveLevelOfCare locks the program
+            // row) between this check of the target level and the write.
+            $program = Program::query()->whereKey($locked->program_id)->sharedLock()->firstOrFail();
 
             $this->enrollments->assertCanEnrollIn($program);
             $this->enrollments->assertCanSee($locked);

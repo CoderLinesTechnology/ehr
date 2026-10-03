@@ -130,7 +130,7 @@ Each entity has one owning module; other modules reference it, never copy it.
 | Tasks | tasks | Phase 2 |
 | Forms & Documents | forms, versions, submissions, documents, versions, signatures | Phase 3 |
 | Clinical | notes (+versions, signatures, amendments), assessments, treatment plans, diagnoses, care teams | Phase 4 |
-| Programs | programs, levels of care, enrollments, transitions, groups, activities, requirements, outcomes, attendance | Phase 5 |
+| Programs | programs, levels_of_care, program_staff, program_enrollments, program_enrollment_events (insert-only), program_sessions, program_session_attendance (built); requirements and outcomes later | Phase 5 (overview, admissions, levels of care, schedule, attendance built) |
 | Billing | charges, invoices, invoice lines, payments, refunds, credits, adjustments | Phase 6 |
 | Insurance | payers, policies, authorizations, eligibility, claims, remittance, denials | Phase 7 |
 | Telehealth & AI | sessions, providers, recordings, transcripts, AI processing | Phase 8 |

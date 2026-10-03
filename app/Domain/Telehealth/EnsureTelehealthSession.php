@@ -58,6 +58,8 @@ final class EnsureTelehealthSession
                 'appointment_id' => $appointment->id,
                 'client_id' => $appointment->client_id,
                 'clinician_membership_id' => $appointment->clinician_membership_id,
+                'starts_at' => $appointment->starts_at,
+                'ends_at' => $appointment->ends_at,
                 'status' => SessionStatus::Scheduled,
                 'provider_key' => $provider->key(),
                 'join_url' => $details->joinUrl,

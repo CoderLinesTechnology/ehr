@@ -25,6 +25,11 @@ return new class extends Migration
             $table->uuid('client_id');
             // Copied from the appointment so the list can filter "my sessions" without a join.
             $table->uuid('clinician_membership_id');
+            // Copied from the appointment when the session is created (an appointment is never re-timed in place:
+            // rescheduling creates a replacement, and with it a new session), so lists order and filter on this
+            // table's own indexes instead of joining appointments first.
+            $table->timestampTz('starts_at');
+            $table->timestampTz('ends_at');
             $table->string('status', 16)->default('scheduled');
             $table->string('provider_key', 32);
             $table->text('join_url')->nullable();
@@ -46,9 +51,10 @@ return new class extends Migration
             $table->foreign(['organization_id', 'client_id', 'record_environment'], 'telehealth_sessions_client_fk')
                 ->references(['organization_id', 'id', 'record_environment'])->on('clients')->restrictOnDelete();
             $table->tenantForeign('clinician_membership_id', 'organization_memberships');
-            $table->index(['organization_id', 'clinician_membership_id', 'status']);
-            $table->index(['organization_id', 'status']);
+            $table->index(['organization_id', 'starts_at']);
+            $table->index(['organization_id', 'clinician_membership_id', 'starts_at']);
         });
+        T::check('telehealth_sessions', 'range', "ends_at > starts_at AND ends_at - starts_at <= interval '24 hours'");
         T::checkIn('telehealth_sessions', 'status', ['scheduled', 'waiting', 'in_progress', 'completed', 'cancelled', 'missed']);
         T::checkIn('telehealth_sessions', 'record_environment', ['live', 'demo']);
         T::check('telehealth_sessions', 'consent', 'NOT consent_to_record OR consent_recorded_at IS NOT NULL');
@@ -152,6 +158,28 @@ return new class extends Migration
         });
         T::check('session_note_versions', 'body_length', 'char_length(body) <= 20000');
         T::insertOnly('session_note_versions', allowDemoPurge: true);
+
+        // Telehealth appointments booked before this module existed get their session now (status mapped, no link, no
+        // consent), so the list is complete from the first day. Later bookings are created by the scheduling listener.
+        DB::statement(<<<'SQL'
+            INSERT INTO telehealth_sessions (id, organization_id, record_environment, appointment_id, client_id, clinician_membership_id,
+                starts_at, ends_at, status, provider_key, started_at, ended_at, duration_minutes, consent_to_record, created_at, updated_at)
+            SELECT gen_random_uuid(), a.organization_id, a.record_environment, a.id, a.client_id, a.clinician_membership_id,
+                a.starts_at, a.ends_at,
+                CASE a.status WHEN 'in_progress' THEN 'in_progress' WHEN 'completed' THEN 'completed'
+                    WHEN 'cancelled' THEN 'cancelled' WHEN 'rescheduled' THEN 'cancelled' WHEN 'no_show' THEN 'missed' ELSE 'scheduled' END,
+                'external_link', a.started_at,
+                CASE WHEN a.status = 'completed' AND (a.started_at IS NULL OR a.completed_at >= a.started_at) THEN a.completed_at END,
+                CASE WHEN a.status = 'completed' THEN (EXTRACT(EPOCH FROM (a.ends_at - a.starts_at)) / 60)::int END,
+                false, now(), now()
+            FROM appointments a WHERE a.modality = 'telehealth'
+            ON CONFLICT (organization_id, appointment_id) DO NOTHING
+        SQL);
+        DB::statement(<<<'SQL'
+            INSERT INTO telehealth_session_status_histories (id, organization_id, record_environment, telehealth_session_id, from_status, to_status, reason, occurred_at)
+            SELECT gen_random_uuid(), s.organization_id, s.record_environment, s.id, NULL, s.status, 'Created with the telehealth module', now()
+            FROM telehealth_sessions s
+        SQL);
     }
 
     public function down(): void

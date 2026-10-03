@@ -64,8 +64,3 @@ Route::prefix('programs')->name('programs.')->middleware('feature:programs')->gr
         });
     });
 });
-
-// TEMP-STUB-REMOVE
-if (env('PROG_STUB')) {
-    Route::get('reports', fn () => 'reports')->name('reports.index');
-}

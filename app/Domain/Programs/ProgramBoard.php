@@ -38,7 +38,6 @@ final class ProgramBoard
      *   counts: array<string, int>,
      *   stats: array{programs: int, participants: int, upcoming: int, completed: int},
      *   schedule: list<array{id: string, title: string, start: CarbonImmutable, end: CarbonImmutable, zone: string, place: string, program: string}>,
-     *   canSeeAll: bool,
      * }
      */
     public function __invoke(ProgramFilters $filters): array
@@ -110,7 +109,6 @@ final class ProgramBoard
                 'place' => $s->placeLabel(),
                 'program' => $s->program->name,
             ])->all(),
-            'canSeeAll' => $seesSud,
         ];
     }
 

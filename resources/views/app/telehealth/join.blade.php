@@ -47,24 +47,24 @@
 
             @include('app.telehealth.partials-preview')
 
-            @unless ($details->hasLink)
+            @if (! $details->hasLink || $joinUrl === null)
                 <form method="POST" action="{{ route('app.telehealth.link', ['session' => $session]) }}" class="tj-link-form" data-submit-once novalidate>
                     @csrf @method('PUT')
                     <label for="tj-join-url">Meeting link</label>
-                    <p>Paste the Zoom, Google Meet or Microsoft Teams link for this session. It is stored encrypted and only staff who may join can see it.</p>
+                    <p>{{ $details->hasLink ? 'The saved link is no longer on your organization\'s list of allowed meeting hosts. Paste a new Zoom, Google Meet or Microsoft Teams link for this session.' : 'Paste the Zoom, Google Meet or Microsoft Teams link for this session.' }} It is stored encrypted and only staff who may join can see it.</p>
                     <div>
                         <input type="url" id="tj-join-url" name="join_url" value="{{ old('join_url') }}" placeholder="https://" maxlength="2048" autocomplete="off" aria-describedby="tj-join-url-error" required>
                         <button type="submit" class="tj-btn tj-btn--outline">Save link</button>
                     </div>
                     @error('join_url')<p class="tj-error" id="tj-join-url-error" role="alert">{{ $message }}</p>@enderror
                 </form>
-            @endunless
+            @endif
 
             @if ($canJoinNow)
                 <a href="{{ $joinUrl }}" target="_blank" rel="noopener noreferrer" class="tj-join" data-telehealth-join data-start-url="{{ route('app.telehealth.start', ['session' => $session]) }}"><x-ui.icon name="video" :size="19" :stroke="2" />{{ $running ? 'Rejoin Session' : 'Join Session' }}</a>
             @else
                 <span class="tj-join is-disabled" aria-disabled="true"><x-ui.icon name="video" :size="19" :stroke="2" />Join Session</span>
-                @if ($details->hasLink)
+                @if ($details->hasLink && $joinUrl !== null)
                     <p class="tj-hint">You can join from {{ $format->time($opensAt, $details->timezone) }} until the session ends at {{ $format->time($details->endsAt, $details->timezone) }}.</p>
                 @endif
             @endif

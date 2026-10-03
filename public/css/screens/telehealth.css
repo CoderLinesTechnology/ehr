@@ -285,7 +285,8 @@
 .ts-rail { gap: 18px; margin-top: -1px; }
 .ts-saved { margin-top: 2px; }
 
-.ts-head { display: flex; align-items: flex-start; gap: 18px; margin: 11px 0 16px; }
+.ts-head { display: flex; align-items: flex-start; gap: 18px; margin: 11px 0 16px 11px; }
+.ts-main > .tj-back { margin-left: 11px; }
 .ts-head__tick { display: grid; flex: none; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #cdeedd; color: #0e7a4e; }
 .ts-head__title { margin: 3px 0 0; color: #000012; font-size: 23.2px; font-weight: 600; line-height: 30px; }
 .ts-head__text { margin: 9px 0 0; color: #34507e; font-size: 12.6px; line-height: 18px; }
@@ -298,13 +299,13 @@
 
 /* Client card */
 .ts-client { margin-bottom: 2px; padding: 20px 20px 20px; }
-.ts-client__top { display: flex; align-items: flex-start; gap: 18px; padding: 0 0 15px 4px; border-bottom: 1px solid #f0f4fa; margin: 0 -6px 15px 4px; }
+.ts-client__top { display: flex; align-items: flex-start; gap: 15.5px; padding: 0 0 15px 1px; border-bottom: 1px solid #f0f4fa; margin: 0 -6px 15px 4px; }
 .ts-client__avatar { width: 64px; height: 64px; flex: none; font-size: 20px; font-weight: 500; }
 .ts-client__name { margin: 0; color: #000018; font-size: 15px; font-weight: 600; line-height: 20px; }
 .ts-client__id { margin: 4px 0 0; color: #5e6b9f; font-size: 10.4px; line-height: 16px; }
 .ts-client__id i { font-style: normal; margin: 0 4px; }
 .ts-client__chips { display: flex; gap: 10px; margin: 10px 0 0; }
-.ts-chip { display: inline-flex; align-items: center; gap: 8px; height: 22px; padding: 0 11px 0 12px; border-radius: 999px; background: #e8f1fd; color: #243f72; font-size: 10.8px; font-weight: 500; line-height: 1; }
+.ts-chip { display: inline-flex; align-items: center; gap: 7px; height: 22px; padding: 0 10px 0 11px; border-radius: 999px; background: #e8f1fd; color: #243f72; font-size: 9.9px; font-weight: 500; line-height: 1; }
 .ts-chip .icon { color: #243f72; }
 .ts-tiles { display: grid; grid-template-columns: 142fr 141fr 141fr 111fr; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .ts-tiles > li { min-width: 0; }
@@ -362,7 +363,7 @@ a.ts-tile:hover, .ts-more[open] .ts-tile { background: #eef4fc; color: #243f72; 
 .ts-media__text b { color: #1d3164; font-size: 11.5px; font-weight: 500; line-height: 16px; }
 .ts-media__text small { color: #46699a; font-size: 10.4px; line-height: 14px; }
 .ts-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 33px; padding: 0 16px; border: 1.5px solid #d8e6fb; border-radius: 10px; background: #fff;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 33px; padding: 0 12px; border: 1.5px solid #d8e6fb; border-radius: 10px; background: #fff;
   color: #0a54ea; font: inherit; font-size: 10.5px; font-weight: 500; line-height: 1; text-decoration: none; cursor: pointer; white-space: nowrap;
 }
 .ts-btn:hover { background: #f4f8fe; color: #0a54ea; }
@@ -377,8 +378,8 @@ a.ts-tile:hover, .ts-more[open] .ts-tile { background: #eef4fc; color: #243f72; 
 .ts-next__tile { display: grid; flex: none; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: #dce9fc; color: #1160f0; }
 .ts-next__text { display: grid; gap: 4px; flex: 1; min-width: 0; }
 .ts-next__text b { color: #0b1a4a; font-size: 10.4px; font-weight: 600; line-height: 16px; }
-.ts-next__text small { color: #46699a; font-size: 10.6px; line-height: 14px; }
-.ts-return { display: flex; align-items: center; justify-content: center; gap: 9px; height: 42px; margin: 22px 0 0; border: 1.5px solid #d8e6fb; border-radius: 10px; background: #fff; color: #0a54ea; font-size: 12.1px; font-weight: 500; text-decoration: none; }
+.ts-next__text small { color: #46699a; font-size: 9.5px; line-height: 14px; }
+.ts-return { display: flex; align-items: center; justify-content: center; gap: 9px; height: 42px; margin: 22px 0 0; border: 1.5px solid #d8e6fb; border-radius: 10px; background: #fff; color: #0a54ea; font-size: 10.6px; font-weight: 500; text-decoration: none; }
 .ts-return:hover { background: #f4f8fe; color: #0a54ea; }
 
 /* Rail */

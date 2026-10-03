@@ -31,7 +31,7 @@ final class SetMeetingLink
             throw new DomainException('Enter the meeting link as one https address.', 'meeting_link_invalid', 'join_url');
         }
 
-        return DB::transaction(function () use ($organization, $session, $url, $actor) {
+        return DB::transaction(function () use ($organization, $session, $url) {
             /** @var TelehealthSession $locked */
             $locked = TelehealthSession::query()->lockForUpdate()->findOrFail($session->id);
             if (! $locked->status->isOpen()) {

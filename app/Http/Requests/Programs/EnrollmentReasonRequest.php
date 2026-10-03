@@ -19,8 +19,6 @@ final class EnrollmentReasonRequest extends FormRequest
         return [
             'reason' => ['nullable', 'string', 'max:500'],
             'outcome' => ['nullable', 'string', Rule::in(['completed', 'discharged'])],
-            'program_id' => ['nullable', 'uuid'],
-            'level_id' => ['nullable', 'uuid'],
         ];
     }
 }

@@ -28,16 +28,28 @@ final class SyncSessionWithAppointment
 
     public function handleScheduled(AppointmentScheduled $event): void
     {
+        if ($event->appointment->modality !== Modality::Telehealth) {
+            return;
+        }
+
         $this->within($event->appointment, fn () => ($this->sync)($event->appointment, null, $event->actorUserId));
     }
 
     public function handleStatusChanged(AppointmentStatusChanged $event): void
     {
+        if ($event->appointment->modality !== Modality::Telehealth) {
+            return; // no query for in-person appointments; a session left behind by a modality change is reconciled on the sessions list
+        }
+
         $this->within($event->appointment, fn () => ($this->sync)($event->appointment, $event->reason, $event->actorUserId));
     }
 
     public function handleRescheduled(AppointmentRescheduled $event): void
     {
+        if ($event->original->modality !== Modality::Telehealth && $event->replacement->modality !== Modality::Telehealth) {
+            return;
+        }
+
         $this->within($event->replacement, function () use ($event) {
             $old = TelehealthSession::query()->where('appointment_id', $event->original->id)->first();
 

@@ -9,7 +9,6 @@ use App\Models\TelehealthSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\JoinClause;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Reads the sessions list in a fixed number of queries (one for the tab counts, one for the page), whatever the
@@ -39,11 +38,11 @@ final class SessionListReader
         $this->applyTab($query, $tab, $now);
         $rows = $query
             ->select([
-                'telehealth_sessions.id', 'telehealth_sessions.status', 'a.starts_at', 'a.ends_at', 'a.timezone',
+                'telehealth_sessions.id', 'telehealth_sessions.status', 'telehealth_sessions.starts_at', 'telehealth_sessions.ends_at', 'a.timezone',
                 'c.first_name', 'c.last_name', 'c.preferred_name', 'c.client_number', 's.name as service_name',
                 'm.name_prefix', 'u.name as clinician_name',
             ])
-            ->orderBy('a.starts_at', $tab === 'upcoming' ? 'asc' : 'desc')
+            ->orderBy('telehealth_sessions.starts_at', $tab === 'upcoming' ? 'asc' : 'desc')
             ->orderBy('telehealth_sessions.id')
             ->offset(($page - 1) * self::PER_PAGE)->limit(self::PER_PAGE)
             ->get();
@@ -85,7 +84,7 @@ final class SessionListReader
         $now = CarbonImmutable::now('UTC');
         $query = $this->base($viewer);
         $this->applyTab($query, 'upcoming', $now);
-        $row = $query->select(['telehealth_sessions.id', 'a.starts_at', 'a.ends_at'])->orderBy('a.starts_at')->orderBy('telehealth_sessions.id')->first();
+        $row = $query->select(['telehealth_sessions.id', 'telehealth_sessions.starts_at', 'telehealth_sessions.ends_at'])->orderBy('telehealth_sessions.starts_at')->orderBy('telehealth_sessions.id')->first();
         if ($row === null) {
             return null;
         }
@@ -98,12 +97,20 @@ final class SessionListReader
         ];
     }
 
-    /** @return array{upcoming: int, past: int, all: int} */
+    /**
+     * Tab counts from the sessions table alone (no joins): one pass over the viewer's rows.
+     *
+     * @return array{upcoming: int, past: int, all: int}
+     */
     private function counts(OrganizationMembership $viewer, CarbonImmutable $now): array
     {
         $open = "'".implode("','", SessionStatus::OPEN)."'";
-        $row = $this->base($viewer)
-            ->selectRaw("count(*) filter (where telehealth_sessions.status in ({$open}) and a.ends_at >= ?) as upcoming", [$now->format('Y-m-d H:i:s.uP')])
+        $query = TelehealthSession::query()->toBase();
+        if (! $this->permissions->membershipHas($viewer, 'appointments.view_all')) {
+            $query->where('telehealth_sessions.clinician_membership_id', $viewer->id);
+        }
+        $row = $query
+            ->selectRaw("count(*) filter (where telehealth_sessions.status in ({$open}) and telehealth_sessions.ends_at >= ?) as upcoming", [$now->format('Y-m-d H:i:s.uP')])
             ->selectRaw('count(*) as total')
             ->first();
 
@@ -118,9 +125,14 @@ final class SessionListReader
         $open = SessionStatus::OPEN;
         $at = $now->format('Y-m-d H:i:s.uP');
 
+        // A session lasts at most 24 hours (CHECK), so "not over yet" implies "started within the last 24 hours": the
+        // redundant starts_at bound lets the (organization, starts_at) index skip the whole history.
+        $earliest = $now->subDay()->format('Y-m-d H:i:s.uP');
+
         match ($tab) {
-            'upcoming' => $query->whereIn('telehealth_sessions.status', $open)->whereRaw('a.ends_at >= ?', [$at]),
-            'past' => $query->where(fn (Builder $q) => $q->whereNotIn('telehealth_sessions.status', $open)->orWhereRaw('a.ends_at < ?', [$at])),
+            'upcoming' => $query->whereIn('telehealth_sessions.status', $open)
+                ->whereRaw('telehealth_sessions.starts_at >= ?', [$earliest])->whereRaw('telehealth_sessions.ends_at >= ?', [$at]),
+            'past' => $query->where(fn (Builder $q) => $q->whereNotIn('telehealth_sessions.status', $open)->orWhereRaw('telehealth_sessions.ends_at < ?', [$at])),
             default => null,
         };
     }

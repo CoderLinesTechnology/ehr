@@ -105,7 +105,17 @@ class SessionsTest extends ProgramsTestCase
 
         // The calendar page draws it, linking to the program (never to an appointment screen).
         $this->as($this->admin)->get($this->url('app.calendar.index', ['view' => 'week', 'date' => '2026-10-07']))
-            ->assertOk()->assertSee('Group Therapy Session')->assertSee('/programs/'.$program->id.'/sessions/'.$session->id, false);
+            ->assertOk()->assertSee('Group Therapy Session')->assertSee('/programs/'.$program->id.'/sessions/'.$session->id, false)
+            ->assertDontSee('Showing program sessions only');
+
+        // Every view draws it (the day view gives a facilitator-less session its own "Programs" column).
+        foreach (['day', 'month'] as $view) {
+            $this->get($this->url('app.calendar.index', ['view' => $view, 'date' => '2026-10-07']))->assertOk()->assertSee('Group Therapy Session');
+        }
+
+        // "View Program Calendar": the same grid filtered to program sessions, with a way back.
+        $this->get($this->url('app.calendar.index', ['view' => 'week', 'date' => '2026-10-07', 'program' => 'all']))
+            ->assertOk()->assertSee('Group Therapy Session')->assertSee('Showing program sessions only')->assertSee('Show appointments too');
     }
 
     #[Test]
@@ -206,5 +216,25 @@ class SessionsTest extends ProgramsTestCase
         $this->assertSame(0, DB::table('program_session_attendance')->count());
         $this->post($this->url('app.programs.sessions.attendance', ['program' => $program->id, 'session' => $session->id]), ['attendance' => [$enrollment->id => 'present']])->assertRedirect();
         $this->get($this->url('app.programs.sessions.show', ['program' => $program->id, 'session' => $session->id]))->assertSee('checked', false);
+    }
+
+    #[Test]
+    public function only_a_session_that_has_not_started_can_be_cancelled(): void
+    {
+        $program = $this->program();
+        $future = $this->schedule($program, ['date' => '2026-10-20']);
+        $past = $this->schedule($program, ['date' => '2026-10-05', 'start_time' => '07:00', 'end_time' => '08:00']);
+
+        $this->doAs(fn () => app(CancelProgramSession::class)($future));
+        $this->assertNotNull($future->fresh()->cancelled_at);
+        $this->assertCount(1, $this->auditEntries('program_session.cancelled'));
+
+        try {
+            $this->doAs(fn () => app(CancelProgramSession::class)($past));
+            $this->fail('started');
+        } catch (DomainException $e) {
+            $this->assertSame('session_started', $e->errorCode());
+        }
+        $this->assertNull($past->fresh()->cancelled_at);
     }
 }

@@ -31,6 +31,8 @@ class TelehealthSession extends Model
             'join_url' => 'encrypted',
             'consent_to_record' => 'boolean',
             'duration_minutes' => 'integer',
+            'starts_at' => 'immutable_datetime',
+            'ends_at' => 'immutable_datetime',
             'started_at' => 'immutable_datetime',
             'ended_at' => 'immutable_datetime',
             'consent_recorded_at' => 'immutable_datetime',

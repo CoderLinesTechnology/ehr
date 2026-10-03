@@ -2,16 +2,24 @@
 
 namespace Tests\Feature\Telehealth;
 
+use App\Domain\Scheduling\AppointmentStatus;
+use App\Domain\Scheduling\CancellationKind;
+use App\Domain\Scheduling\Events\AppointmentScheduled;
+use App\Domain\Scheduling\Events\AppointmentStatusChanged;
 use App\Domain\Scheduling\Modality;
+use App\Domain\Scheduling\TransitionAppointment;
 use App\Domain\Telehealth\AddTranscript;
 use App\Domain\Telehealth\EndSession;
 use App\Domain\Telehealth\OpenSession;
 use App\Domain\Telehealth\SaveSessionNotes;
+use App\Domain\Telehealth\SetMeetingLink;
 use App\Domain\Telehealth\TranscriptSource;
+use App\Models\Appointment;
 use App\Models\OrganizationMembership;
 use App\Models\TelehealthSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 
 /** The sessions list, join page and completed page: who sees what, tenant isolation, windows, headers, query bounds. */
@@ -24,11 +32,16 @@ class TelehealthPagesTest extends TelehealthTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->manager = $this->addStaff($this->organization, 'practice_manager'); // sees all, manages settings, cannot join
+        // The manager template holds every telehealth permission (it must, to hand out the clinician role); this
+        // organization's manager is configured to see everything and manage settings but not to join or read notes.
+        foreach (['telehealth.join', 'telehealth.notes'] as $permission) {
+            $this->revokeFromRole($this->organization, 'practice_manager', $permission);
+        }
+        $this->manager = $this->addStaff($this->organization, 'practice_manager');
         $this->reception = $this->addStaff($this->organization, 'receptionist');   // no telehealth permission at all
     }
 
-    private function index(array $query = []): \Illuminate\Testing\TestResponse
+    private function index(array $query = []): TestResponse
     {
         return $this->get($this->url('app.telehealth.index', $query));
     }
@@ -134,7 +147,7 @@ class TelehealthPagesTest extends TelehealthTestCase
     {
         $foreign = $this->inTenant($this->other, function () {
             $session = TelehealthSession::query()->where('appointment_id', $this->otherAppointment->id)->firstOrFail();
-            app(\App\Domain\Telehealth\SetMeetingLink::class)($session, 'https://zoom.us/j/999', null);
+            app(SetMeetingLink::class)($session, 'https://zoom.us/j/999', null);
 
             return $session;
         });
@@ -308,11 +321,49 @@ class TelehealthPagesTest extends TelehealthTestCase
     {
         $open = $this->sessionAt('2026-10-06 10:00:00');
         $cancelled = $this->sessionAt('2026-10-07 10:00:00', $this->drA, $this->clientB);
-        app(\App\Domain\Scheduling\TransitionAppointment::class)(\App\Models\Appointment::query()->findOrFail($cancelled->appointment_id), \App\Domain\Scheduling\AppointmentStatus::Cancelled, $this->actor, null, \App\Domain\Scheduling\CancellationKind::Practice);
+        app(TransitionAppointment::class)(Appointment::query()->findOrFail($cancelled->appointment_id), AppointmentStatus::Cancelled, $this->actor, null, CancellationKind::Practice);
 
         $this->as($this->drA)->get($this->url('app.telehealth.show', ['session' => $open->id]))->assertRedirect($this->joinUrl($open));
         $this->get($this->url('app.telehealth.show', ['session' => $cancelled->id]))->assertRedirect($this->url('app.telehealth.index'));
         $this->get($this->joinUrl($cancelled))->assertRedirect($this->url('app.telehealth.index'));
+    }
+
+    // ── reconciliation ───────────────────────────────────────────────────────
+
+    #[Test]
+    public function opening_the_list_reconciles_an_appointment_whose_modality_was_edited(): void
+    {
+        $appointment = $this->book($this->drA, $this->clientA, '2026-10-06 10:00:00', Modality::InPerson);
+        $this->assertSame(0, TelehealthSession::query()->count());
+
+        // Edited to telehealth without being rebooked: no event fired, so no session yet.
+        DB::table('appointments')->where('id', $appointment->id)->update(['modality' => 'telehealth', 'location_id' => null]);
+        $this->as($this->drA)->get($this->url('app.telehealth.index'))->assertOk()->assertSee('Alice Alpha');
+        $session = $this->sessionOf($appointment);
+        $this->assertSame('scheduled', $session->status->value);
+
+        // And back to in person: the open session is retired.
+        DB::table('appointments')->where('id', $appointment->id)->update(['modality' => 'in_person', 'location_id' => $this->accra->id]);
+        $this->get($this->url('app.telehealth.index'))->assertOk()->assertDontSee('Alice Alpha');
+        $this->assertSame('cancelled', $session->refresh()->status->value);
+
+        // Nothing to do: the next visit changes nothing and adds no history.
+        $history = $session->statusHistory()->count();
+        $this->get($this->url('app.telehealth.index'))->assertOk();
+        $this->assertSame($history, $session->statusHistory()->count());
+    }
+
+    #[Test]
+    public function scheduling_events_for_in_person_appointments_cost_the_telehealth_listener_no_queries(): void
+    {
+        $appointment = $this->book($this->drA, $this->clientA, '2026-10-06 10:00:00', Modality::InPerson);
+
+        $queries = $this->queriesDuring(function () use ($appointment) {
+            event(new AppointmentScheduled($appointment, $this->actor->id));
+            event(new AppointmentStatusChanged($appointment, AppointmentStatus::Scheduled, AppointmentStatus::Confirmed, null, null));
+        });
+
+        $this->assertSame([], array_values(array_filter($queries, fn (string $sql) => str_contains($sql, 'telehealth_'))));
     }
 
     // ── query bounds ─────────────────────────────────────────────────────────

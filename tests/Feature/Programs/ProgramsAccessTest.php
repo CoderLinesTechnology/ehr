@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Programs;
 
+use App\Domain\Programs\AssignProgramStaff;
 use App\Domain\Programs\ProgramStatus;
+use App\Domain\Programs\ScheduleProgramSession;
+use App\Domain\Programs\StaffRole;
 use App\Domain\Saas\EntitlementService;
 use App\Models\OrganizationEntitlement;
 use Illuminate\Support\Facades\DB;
@@ -171,5 +174,32 @@ class ProgramsAccessTest extends ProgramsTestCase
 
         $this->as($this->admin)->get($this->url('app.programs.index'))
             ->assertOk()->assertSee('Add Participant')->assertSee('View Program Calendar')->assertDontSee('Generate Report');
+    }
+
+    #[Test]
+    public function the_level_staff_and_session_routes_ask_for_their_permissions_too(): void
+    {
+        $program = $this->program();
+        $level = $this->level($program);
+        $session = $this->doAs(fn () => app(ScheduleProgramSession::class)($program, ['title' => 'Group', 'date' => '2026-10-05', 'start_time' => '07:00', 'end_time' => '08:00', 'place' => 'online']));
+        $p = ['program' => $program->id];
+
+        // Calls that consume their target are made last for each person; the staff row is re-created per call.
+        $matrix = [
+            ['put', 'app.programs.levels.update', $p + ['level' => $level->id], ['clinician' => 403, 'manager' => 302, 'none' => 403]],
+            ['get', 'app.programs.sessions.show', $p + ['session' => $session->id], ['clinician' => 200, 'manager' => 200, 'none' => 403]],
+            ['post', 'app.programs.sessions.attendance', $p + ['session' => $session->id], ['clinician' => 302, 'manager' => 302, 'none' => 403]],
+            ['post', 'app.programs.sessions.cancel', $p + ['session' => $session->id], ['clinician' => 403, 'manager' => 302, 'none' => 403]],
+        ];
+        foreach ($matrix as [$method, $route, $parameters, $expected]) {
+            foreach (['clinician' => $this->clinician, 'manager' => $this->manager, 'none' => $this->none] as $who => $member) {
+                $this->assertSame($expected[$who], $this->as($member)->{$method}($this->url($route, $parameters))->getStatusCode(), "{$method} {$route} as {$who}");
+            }
+        }
+
+        foreach (['clinician' => [$this->clinician, 403], 'none' => [$this->none, 403], 'manager' => [$this->manager, 302]] as $who => [$member, $expected]) {
+            $row = $this->doAs(fn () => app(AssignProgramStaff::class)($program, $this->clinician, StaffRole::Clinician));
+            $this->assertSame($expected, $this->as($member)->delete($this->url('app.programs.staff.destroy', $p + ['staff' => $row->id]))->getStatusCode(), "delete staff as {$who}");
+        }
     }
 }

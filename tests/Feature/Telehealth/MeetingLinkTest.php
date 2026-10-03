@@ -8,6 +8,7 @@ use App\Domain\Telehealth\Providers\MeetingLinkPolicy;
 use App\Domain\Telehealth\Providers\ProviderRegistry;
 use App\Domain\Telehealth\SetMeetingLink;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -142,7 +143,7 @@ class MeetingLinkTest extends TelehealthTestCase
     #[Test]
     public function the_provider_declares_its_capabilities_and_makes_no_outbound_call(): void
     {
-        \Illuminate\Support\Facades\Http::fake();
+        Http::fake();
         $provider = app(ProviderRegistry::class)->default();
 
         $this->assertInstanceOf(ExternalLinkProvider::class, $provider);
@@ -151,6 +152,6 @@ class MeetingLinkTest extends TelehealthTestCase
         $this->assertFalse($provider->capabilities()->waitingRoom);
 
         $this->sessionAt('2026-10-06 10:00:00');
-        \Illuminate\Support\Facades\Http::assertNothingSent();
+        Http::assertNothingSent();
     }
 }

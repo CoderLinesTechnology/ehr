@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers\App\Telehealth;
 
+use App\Domain\Audit\AuditLogger;
 use App\Domain\Scheduling\Modality;
+use App\Domain\Settings\SettingsService;
+use App\Domain\Telehealth\Providers\ProviderRegistry;
+use App\Domain\Telehealth\ReconcileSessions;
 use App\Domain\Telehealth\SessionDetailsReader;
 use App\Domain\Telehealth\SessionListReader;
 use App\Domain\Telehealth\SessionStatus;
+use App\Domain\Telehealth\TelehealthSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\TelehealthSession;
@@ -21,8 +26,9 @@ use Illuminate\View\View;
  */
 final class SessionController extends Controller
 {
-    public function index(Request $request, SessionListReader $reader): View
+    public function index(Request $request, SessionListReader $reader, ReconcileSessions $reconcile): View
     {
+        $reconcile();   // sessions for appointments whose modality was edited rather than rebooked (bounded, idempotent)
         $membership = tenant()->membership();
         $tab = is_string($request->query('tab')) ? $request->query('tab') : 'upcoming';
         $page = (int) $request->query('page', 1);
@@ -54,7 +60,7 @@ final class SessionController extends Controller
     }
 
     /** The completed-session page; a session that has not finished leads to its join page, one that never happened to the list. */
-    public function show(TelehealthSession $session, SessionDetailsReader $reader): View|RedirectResponse
+    public function show(TelehealthSession $session, SessionDetailsReader $reader, AuditLogger $audit): View|RedirectResponse
     {
         if ($session->status->isOpen()) {
             return Gate::allows('join', $session)
@@ -67,6 +73,10 @@ final class SessionController extends Controller
 
         $membership = tenant()->membership();
         $clinical = Gate::allows('clinical', $session);
+        if ($clinical) {
+            // Opening notes, recordings and transcripts is a sensitive read (HIPAA audit controls): who, when, which session.
+            $audit->record('telehealth.session_clinical_viewed', subject: $session, summary: 'Telehealth session notes and recordings were opened');
+        }
 
         return view('app.telehealth.show', [
             'session' => $session,
@@ -76,7 +86,7 @@ final class SessionController extends Controller
             'canViewClient' => Route::has('app.clients.show'),
             'canBook' => Route::has('app.appointments.create') && Gate::allows('create', Appointment::class),
             'canCalendar' => Route::has('app.calendar.index') && Gate::allows('viewAny', Appointment::class),
-            'recordingOn' => $clinical && app(\App\Domain\Telehealth\TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
+            'recordingOn' => $clinical && app(TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
         ]);
     }
 
@@ -96,9 +106,9 @@ final class SessionController extends Controller
             'session' => $session,
             'details' => $details,
             // The meeting link is handed only to people who may join, and only if it still passes the host allowlist.
-            'joinUrl' => $details->hasLink ? app(\App\Domain\Telehealth\Providers\ProviderRegistry::class)->get($session->provider_key)->joinUrlFor($session, request()->user()) : null,
+            'joinUrl' => $details->hasLink ? app(ProviderRegistry::class)->get($session->provider_key)->joinUrlFor($session, request()->user()) : null,
             'clinical' => $clinical,
-            'recordingOn' => $clinical && app(\App\Domain\Telehealth\TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
+            'recordingOn' => $clinical && app(TelehealthSettings::class)->recordingEnabled(tenant()->organizationOrFail()),
             'calendarUrl' => Route::has('app.calendar.index') && Gate::allows('viewAny', Appointment::class) ? route('app.calendar.index') : route('app.telehealth.index'),
             'supportEmail' => $this->supportEmail(),
         ]);
@@ -106,7 +116,7 @@ final class SessionController extends Controller
 
     private function supportEmail(): ?string
     {
-        $email = app(\App\Domain\Settings\SettingsService::class)->platform('platform.support_email');
+        $email = app(SettingsService::class)->platform('platform.support_email');
 
         return is_string($email) && $email !== '' ? $email : null;
     }

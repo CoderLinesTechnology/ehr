@@ -3,6 +3,8 @@
 namespace Tests\Feature\Telehealth;
 
 use App\Domain\Scheduling\AppointmentStatus;
+use App\Domain\Scheduling\CancellationKind;
+use App\Domain\Scheduling\TransitionAppointment;
 use App\Domain\Shared\DomainException;
 use App\Domain\Telehealth\AddTranscript;
 use App\Domain\Telehealth\AttachRecording;
@@ -14,13 +16,17 @@ use App\Domain\Telehealth\SaveSessionNotes;
 use App\Domain\Telehealth\SessionStatus;
 use App\Domain\Telehealth\TranscriptSource;
 use App\Domain\Telehealth\TranscriptStatus;
+use App\Domain\Tenancy\TenantMismatch;
 use App\Models\Appointment;
 use App\Models\SessionNoteVersion;
+use App\Models\SessionRecording;
 use App\Models\TelehealthSession;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -126,7 +132,7 @@ class SessionActionsTest extends TelehealthTestCase
             return TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
         });
 
-        $this->expectException(\App\Domain\Tenancy\TenantMismatch::class);
+        $this->expectException(TenantMismatch::class);
         app(OpenSession::class)($foreign, $this->actor);
     }
 
@@ -162,7 +168,7 @@ class SessionActionsTest extends TelehealthTestCase
             'session_transcripts' => ['source' => 'provider', 'status' => 'draft', 'body' => 'hello']] as $table => $columns) {
             try {
                 DB::transaction(fn () => DB::table($table)->insert([
-                    'id' => (string) \Illuminate\Support\Str::uuid7(), 'organization_id' => $session->organization_id, 'record_environment' => 'live',
+                    'id' => (string) Str::uuid7(), 'organization_id' => $session->organization_id, 'record_environment' => 'live',
                     'telehealth_session_id' => $session->id, 'consented' => true, 'created_at' => now(), 'updated_at' => now(),
                 ] + $columns));
                 $this->fail("{$table}: a row was stored for a session without consent.");
@@ -177,8 +183,8 @@ class SessionActionsTest extends TelehealthTestCase
     {
         $session = $this->consented($this->sessionAt('2026-10-06 10:00:00'));
 
-        $this->assertDomainRefusal('recording_type', fn () => app(AttachRecording::class)($session, \Illuminate\Http\UploadedFile::fake()->createWithContent('x.wav', '<?php echo 1;'), null, $this->actor));
-        $this->assertSame(0, \App\Models\SessionRecording::query()->count());
+        $this->assertDomainRefusal('recording_type', fn () => app(AttachRecording::class)($session, UploadedFile::fake()->createWithContent('x.wav', '<?php echo 1;'), null, $this->actor));
+        $this->assertSame(0, SessionRecording::query()->count());
     }
 
     #[Test]
@@ -278,7 +284,7 @@ class SessionActionsTest extends TelehealthTestCase
         $this->assertDomainRefusal('notes_empty', fn () => app(SaveSessionNotes::class)($session, "  \n ", $this->actor));
         $this->assertDomainRefusal('notes_too_long', fn () => app(SaveSessionNotes::class)($session, str_repeat('a', SaveSessionNotes::MAX_LENGTH + 1), $this->actor));
 
-        app(\App\Domain\Scheduling\TransitionAppointment::class)(Appointment::query()->findOrFail($session->appointment_id), AppointmentStatus::Cancelled, $this->actor, null, \App\Domain\Scheduling\CancellationKind::Practice);
+        app(TransitionAppointment::class)(Appointment::query()->findOrFail($session->appointment_id), AppointmentStatus::Cancelled, $this->actor, null, CancellationKind::Practice);
         $this->assertDomainRefusal('session_closed', fn () => app(SaveSessionNotes::class)($session->refresh(), 'text', $this->actor));
     }
 

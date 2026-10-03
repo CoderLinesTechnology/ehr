@@ -52,11 +52,13 @@ final class EnrollmentGuard
         }
 
         $this->guard->assertInOrganization($level);
-        if ($level->program_id !== $program->id || ! $level->is_active) {
+        // The level as the database has it now (the caller's instance may predate a deactivation).
+        $current = LevelOfCare::query()->whereKey($level->id)->first();
+        if ($current === null || $current->program_id !== $program->id || ! $current->is_active) {
             throw new DomainException('Choose one of this program’s active levels of care.', 'invalid_level', $field);
         }
 
-        return $level;
+        return $current;
     }
 
     /** The member who authorised a level change: an active member who may admit and transition clients. @throws DomainException */

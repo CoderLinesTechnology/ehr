@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Telehealth;
 
+use App\Domain\Settings\SettingsService;
 use App\Domain\Telehealth\AddTranscript;
 use App\Domain\Telehealth\EndSession;
 use App\Domain\Telehealth\OpenSession;
@@ -22,6 +23,9 @@ class TelehealthActionsHttpTest extends TelehealthTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        foreach (['telehealth.join', 'telehealth.notes'] as $permission) {
+            $this->revokeFromRole($this->organization, 'practice_manager', $permission);
+        }
         $this->manager = $this->addStaff($this->organization, 'practice_manager');
     }
 
@@ -231,7 +235,7 @@ class TelehealthActionsHttpTest extends TelehealthTestCase
         $valid = ['allowed_hosts' => "zoom.us\n*.zoom.us\nmeet.google.com", 'join_early_minutes' => 20, 'recording_enabled' => '1'];
 
         $this->as($this->manager)->put($url, $valid + ['default_link' => 'https://zoom.us/j/424242?pwd=KeepMe'])->assertRedirect($this->url('app.settings.telehealth.edit'));
-        $settings = app(\App\Domain\Settings\SettingsService::class);
+        $settings = app(SettingsService::class);
         $this->assertSame(20, $settings->organization($this->organization, 'telehealth.join_early_minutes'));
         $this->assertTrue($settings->organization($this->organization, 'telehealth.recording_enabled'));
         $this->assertFalse($settings->organization($this->organization, 'telehealth.ai_transcripts_enabled'));

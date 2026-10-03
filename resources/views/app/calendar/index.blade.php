@@ -27,11 +27,15 @@
                 </x-slot:actions>
             </x-ui.page-header>
 
+            @if ($filters->program !== null)
+                <x-ui.alert tone="info">Showing program sessions only. <a href="{{ route('app.calendar.index', array_diff_key($filters->query(), ['program' => 1])) }}">Show appointments too</a></x-ui.alert>
+            @endif
+
             <section class="card cal-card" aria-label="Calendar">
                 <form method="GET" action="{{ route('app.calendar.index') }}" class="cal-toolbar" data-cal-toolbar>
                     <input type="hidden" name="view" value="{{ $filters->view }}">
                     <input type="hidden" name="date" value="{{ $filters->date->format('Y-m-d') }}">
-                    @foreach (['status' => $filters->status?->value, 'modality' => $filters->modality?->value] as $name => $value)
+                    @foreach (['status' => $filters->status?->value, 'modality' => $filters->modality?->value, 'program' => $filters->program] as $name => $value)
                         @if ($value !== null)<input type="hidden" name="{{ $name }}" value="{{ $value }}">@endif
                     @endforeach
 

@@ -127,7 +127,7 @@
                     @if ($admitUrl)<li><a href="{{ $admitUrl }}"><x-ui.icon name="users" :size="22" /><span>Add Participant</span><x-ui.icon name="chevron-right" :size="15" /></a></li>@endif
                     @if ($calendarUrl)<li><a href="{{ $calendarUrl }}"><x-ui.icon name="calendar" :size="22" /><span>View Program Calendar</span><x-ui.icon name="chevron-right" :size="15" /></a></li>@endif
                     @if ($hasReports)<li><a href="{{ route('app.reports.index') }}"><x-ui.icon name="file-text" :size="22" /><span>Generate Report</span><x-ui.icon name="chevron-right" :size="15" /></a></li>@endif
-                    @if ($canManage && $cards->isNotEmpty())<li><a href="{{ route('app.programs.show', ['program' => $cards->first(), 'tab' => 'levels']) }}"><x-ui.icon name="user-round-cog" :size="22" /><span>Manage Levels of Care</span><x-ui.icon name="chevron-right" :size="15" /></a></li>@endif
+                    @if ($canManage && ($levelsTarget = $cards->first(fn ($p) => Gate::allows('manage', $p))))<li><a href="{{ route('app.programs.show', ['program' => $levelsTarget, 'tab' => 'levels']) }}"><x-ui.icon name="user-round-cog" :size="22" /><span>Manage Levels of Care</span><x-ui.icon name="chevron-right" :size="15" /></a></li>@endif
                 </ul>
             </section>
 

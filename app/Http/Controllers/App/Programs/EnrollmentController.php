@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\App\Programs;
 
-use App\Domain\Clients\ClientStatus;
 use App\Domain\Clients\ClientSearch;
+use App\Domain\Clients\ClientStatus;
 use App\Domain\Clients\ClientVisibility;
 use App\Domain\Programs\AdmitClient;
 use App\Domain\Programs\DischargeClient;
@@ -19,6 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Programs\AdmitRequest;
 use App\Http\Requests\Programs\EnrollmentReasonRequest;
 use App\Http\Requests\Programs\LevelChangeRequest;
+use App\Http\Requests\Programs\TransferRequest;
 use App\Models\Client;
 use App\Models\LevelOfCare;
 use App\Models\OrganizationMembership;
@@ -145,7 +146,7 @@ final class EnrollmentController extends Controller
         return $this->back($program, $enrollment, 'The enrollment has ended.');
     }
 
-    public function transfer(EnrollmentReasonRequest $request, Program $program, ProgramEnrollment $enrollment, TransferClient $transfer): RedirectResponse
+    public function transfer(TransferRequest $request, Program $program, ProgramEnrollment $enrollment, TransferClient $transfer): RedirectResponse
     {
         $target = Program::query()->findOrFail($request->validated('program_id'));
         $level = filled($request->validated('level_id')) ? LevelOfCare::query()->findOrFail($request->validated('level_id')) : null;

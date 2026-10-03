@@ -43,7 +43,7 @@ final class RoleTemplates
                     'organization.settings.manage', 'locations.manage', 'services.manage', 'team.view', 'team.manage',
                     'audit.view', 'demo.manage', 'reports.view',
                     'messages.send', 'messages.client', 'resources.view', 'resources.manage',
-                    'telehealth.manage',
+                    'telehealth.join', 'telehealth.notes', 'telehealth.manage',
                     'programs.view', 'programs.manage', 'programs.enroll',
                 ],
             ],
