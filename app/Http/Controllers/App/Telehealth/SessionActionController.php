@@ -15,10 +15,22 @@ use Illuminate\Http\Request;
 /** State changes of one session. Thin: authorize (route), call the domain action, answer. */
 final class SessionActionController extends Controller
 {
+    /** Session key holding a staff member's camera/microphone choice for one call (read by SessionController::call). */
+    public static function devicesKey(TelehealthSession $session): string
+    {
+        return 'telehealth.devices.'.$session->id;
+    }
+
     /** "Join Session" (a POST form): the room must be available, the session opens, the call page follows. */
     public function start(Request $request, TelehealthSession $session, StartCall $start): JsonResponse|RedirectResponse
     {
         $start($session, $request->user());
+        // The camera / microphone choice from the join page's preview (on unless switched off there). Kept for this
+        // session in this browser, so a refresh of the call page joins the same way.
+        $request->session()->put(self::devicesKey($session), [
+            'camera_off' => $request->has('camera') && ! $request->boolean('camera'),
+            'microphone_off' => $request->has('microphone') && ! $request->boolean('microphone'),
+        ]);
         $call = route('app.telehealth.call', ['session' => $session]);
 
         return $request->expectsJson()

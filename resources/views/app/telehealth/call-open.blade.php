@@ -4,7 +4,7 @@
         <link rel="stylesheet" href="{{ asset('css/screens/telehealth.css') }}?v={{ filemtime(public_path('css/screens/telehealth.css')) }}">
     @endpush
     @push('scripts')
-        <script src="{{ asset('js/screens/telehealth.js') }}?v={{ filemtime(public_path('js/screens/telehealth.js')) }}" defer></script>
+        <script src="{{ asset('js/screens/telehealth-call.js') }}?v={{ filemtime(public_path('js/screens/telehealth-call.js')) }}" defer></script>
     @endpush
 
     <div class="tj-card tv-open" data-call-open="{{ parse_url(route('app.telehealth.call', ['session' => $session]), PHP_URL_PATH) }}">

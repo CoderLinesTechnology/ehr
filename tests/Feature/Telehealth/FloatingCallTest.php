@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 /**
  * The call page as a "call host": the call keeps running in a floating window while the user browses the app in the
  * page's own same-origin frame (spec docs/design/spec/screens/12-telehealth-call.md). The behaviour itself is the
- * script's (public/js/screens/telehealth.js, checked in a browser); this pins what the server owns: the markup, the
+ * script's (public/js/screens/telehealth-call.js, checked in a browser); this pins what the server owns: the markup, the
  * stub that stops a call from nesting, and the `?app=` page a refresh restores.
  */
 class FloatingCallTest extends TelehealthTestCase
@@ -36,11 +36,14 @@ class FloatingCallTest extends TelehealthTestCase
         $html = $this->as($this->drA)->get($this->callUrl($session))->assertOk()->getContent();
         $slug = $this->organization->slug;
 
-        // The host marker the scripts (telehealth.js, and app.js inside the frame) rely on.
+        // The host marker the scripts (telehealth-call.js, and app.js inside the frame) rely on.
         $this->assertStringContainsString('data-call-host="/o/'.$slug.'"', $html);
         $this->assertStringContainsString('data-call-path="'.$this->path('app.telehealth.call', $session).'"', $html);
         $this->assertStringContainsString('data-call-join="'.$this->path('app.telehealth.join', $session).'"', $html);
         $this->assertStringNotContainsString('data-call-app=', $html, 'nothing to restore without ?app=');
+        // Both scripts: the copy buttons (telehealth.js) and the call host, which only this page loads.
+        $this->assertStringContainsString('js/screens/telehealth.js', $html);
+        $this->assertStringContainsString('js/screens/telehealth-call.js', $html);
 
         // The app frame: named, hidden until a link opens in it, never given camera, microphone or screen capture.
         $this->assertSame(1, preg_match('/<iframe name="wellnest-app" class="tv-appframe"[^>]*>/', $html, $frame));
@@ -54,7 +57,7 @@ class FloatingCallTest extends TelehealthTestCase
         $this->assertSame(1, substr_count($html, '<iframe class="tv-frame"'));
         $this->assertStringContainsString('<iframe class="tv-frame" src="', $dock[1]);
         $this->assertStringContainsString('allow="camera; microphone; autoplay; display-capture; fullscreen" allowfullscreen referrerpolicy="no-referrer"', $dock[1]);
-        foreach (['Expand call', 'Full screen', 'Move to next corner', 'End session'] as $label) {
+        foreach (['Expand call', 'Full screen', 'Move to next corner', 'Leave call'] as $label) {
             $this->assertMatchesRegularExpression('/<button type="button" class="tv-bar__btn[^"]*"[^>]*aria-label="'.$label.'"/', $dock[1], $label);
         }
         $this->assertStringContainsString('<span class="tv-bar__name">Alice Alpha</span>', $dock[1]);
@@ -98,7 +101,7 @@ class FloatingCallTest extends TelehealthTestCase
             $this->assertStringNotContainsString('<iframe', $html, 'no Daily frame, no app frame: a call never nests');
             $this->assertStringNotContainsString('data-call-host', $html);
             $this->assertStringNotContainsString('fake-token-', $html);
-            $this->assertStringContainsString('js/screens/telehealth.js', $html);
+            $this->assertStringContainsString('js/screens/telehealth-call.js', $html);
             $this->assertDoesNotMatchRegularExpression('/<script(?![^>]*\bsrc=)[^>]*>/i', $html);
             $this->assertStringContainsString("frame-ancestors 'self'", (string) $response->headers->get('Content-Security-Policy'));
         }

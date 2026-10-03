@@ -36,7 +36,8 @@ final class IssueCallPass
         private readonly PermissionResolver $permissions,
     ) {}
 
-    public function __invoke(TelehealthSession $session, OrganizationMembership $viewer): CallPass
+    /** $cameraOff / $microphoneOff: the viewer chose on the join page to start with that device off. */
+    public function __invoke(TelehealthSession $session, OrganizationMembership $viewer, bool $cameraOff = false, bool $microphoneOff = false): CallPass
     {
         $organization = $this->tenant->organizationOrFail();
         TenantGuard::assertOwned($organization->id, $session, $viewer);
@@ -61,6 +62,8 @@ final class IssueCallPass
             record: $this->settings->recordingEnabled($organization)
                 && $session->consent_to_record
                 && $this->tenant->runAs($organization, fn () => Gate::forUser($user)->allows('clinical', $session), $viewer),
+            startVideoOff: $cameraOff,
+            startAudioOff: $microphoneOff,
         );
 
         try {

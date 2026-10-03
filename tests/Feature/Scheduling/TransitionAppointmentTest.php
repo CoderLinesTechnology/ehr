@@ -167,6 +167,30 @@ class TransitionAppointmentTest extends SchedulingTestCase
     }
 
     #[Test]
+    public function a_visit_started_early_can_be_completed_before_its_scheduled_start_but_a_no_show_cannot(): void
+    {
+        $appointment = $this->appointment(AppointmentStatus::Confirmed, '2026-10-06 14:00');
+
+        // Started 10 minutes early (e.g. a telehealth call joined in its window) and over before 14:00.
+        $this->travelTo(CarbonImmutable::parse('2026-10-06 13:50', 'UTC'));
+        $this->transition($appointment, AppointmentStatus::InProgress);
+        $this->travelTo(CarbonImmutable::parse('2026-10-06 13:58', 'UTC'));
+        $this->transition($appointment, AppointmentStatus::Completed);
+        $this->assertSame(AppointmentStatus::Completed, $appointment->fresh()->status);
+
+        // Only a visit that is under way: a checked-in (not started) appointment still waits for its start time.
+        $other = $this->appointment(AppointmentStatus::Confirmed, '2026-10-07 14:00');
+        $this->travelTo(CarbonImmutable::parse('2026-10-07 13:50', 'UTC'));
+        $this->transition($other, AppointmentStatus::CheckedIn);
+        try {
+            $this->transition($other, AppointmentStatus::Completed);
+            $this->fail('Completing an appointment that has not started must still be refused before its start.');
+        } catch (DomainException $e) {
+            $this->assertSame('too_early', $e->errorCode());
+        }
+    }
+
+    #[Test]
     public function a_cancellation_must_say_who_cancelled(): void
     {
         $appointment = $this->appointment();

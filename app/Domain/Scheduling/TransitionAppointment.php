@@ -69,7 +69,10 @@ final class TransitionAppointment
             }
 
             $now = now();
-            if (! $to->canEnterAt($locked->starts_at, $now)) {
+            // The clock rule stops an appointment that has not happened from being closed in advance. A visit that is
+            // actually under way (started early, inside the check-in window) has happened: finishing it is never early.
+            $finishingAStartedVisit = $from === AppointmentStatus::InProgress && $to === AppointmentStatus::Completed;
+            if (! $finishingAStartedVisit && ! $to->canEnterAt($locked->starts_at, $now)) {
                 throw new DomainException($this->tooEarlyMessage($to), 'too_early', 'status');
             }
 

@@ -440,7 +440,7 @@
   /* ------------------------------------------------ inside a call page's app frame */
 
   // While a video call floats, the telehealth call page shows our pages in its app frame (public/js/screens/
-  // telehealth.js). Inside that frame, whatever leaves this organization's app (sign-out, account, the platform
+  // telehealth-call.js). Inside that frame, whatever leaves this organization's app (sign-out, account, the platform
   // console, another organization, another site) replaces the whole tab: those pages refuse to be framed. Signing
   // out also tells the call page not to ask "Leave the call?". Inactive in any other page.
   function initCallFrame() {

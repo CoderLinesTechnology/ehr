@@ -205,6 +205,11 @@ class TelehealthPagesTest extends TelehealthTestCase
         $this->assertStringContainsString('Clients who open this link wait in the lobby until you admit them.', $html);
         $this->assertStringNotContainsString('<script>', str_replace('<script src=', '', $html), 'no inline script');
         $response->assertSee('js/screens/telehealth.js', false);
+        $response->assertDontSee('js/screens/telehealth-call.js', false); // the call page's script stays on the call page
+        // Camera / microphone switches: on by default, carried by the Join form.
+        $this->assertStringContainsString('<input type="hidden" name="camera" value="1" data-device-choice="camera">', $html);
+        $this->assertStringContainsString('<input type="hidden" name="microphone" value="1" data-device-choice="microphone">', $html);
+        $this->assertStringContainsString('tj-chip__off', $html);
     }
 
     #[Test]

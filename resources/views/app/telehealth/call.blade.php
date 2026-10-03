@@ -16,6 +16,7 @@
     @endpush
     @push('scripts')
         <script src="{{ asset('js/screens/telehealth.js') }}?v={{ filemtime(public_path('js/screens/telehealth.js')) }}" defer></script>
+        <script src="{{ asset('js/screens/telehealth-call.js') }}?v={{ filemtime(public_path('js/screens/telehealth-call.js')) }}" defer></script>
     @endpush
 
     <div class="tv" @if ($host !== null) data-call-host="{{ $host['base'] }}" data-call-path="{{ $host['call'] }}" data-call-join="{{ $host['join'] }}" @if ($appPath !== null) data-call-app="{{ $appPath }}" @endif @endif>
@@ -45,7 +46,7 @@
                             <button type="button" class="tv-bar__btn" data-call-expand aria-label="Expand call" title="Expand call"><x-ui.icon name="maximize-2" :size="16" :stroke="2" /></button>
                             <button type="button" class="tv-bar__btn" data-call-fullscreen aria-label="Full screen" aria-pressed="false" title="Full screen" hidden><x-ui.icon name="maximize" :size="16" :stroke="2" /></button>
                             <button type="button" class="tv-bar__btn" data-call-move aria-label="Move to next corner" title="Move to next corner"><x-ui.icon name="move" :size="16" :stroke="2" /></button>
-                            <button type="button" class="tv-bar__btn tv-bar__btn--end" data-call-end aria-label="End session" title="End session"><x-ui.icon name="phone-off" :size="16" :stroke="2" /></button>
+                            <button type="button" class="tv-bar__btn tv-bar__btn--end" data-call-leave aria-label="Leave call" title="Leave call (the session stays open)"><x-ui.icon name="phone-off" :size="16" :stroke="2" /></button>
                         </div>
                         <iframe class="tv-frame" src="{{ $pass->frameUrl }}" title="Video call with {{ $details->clientName }}"
                             allow="camera; microphone; autoplay; display-capture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
@@ -94,10 +95,16 @@
                 </section>
             @endif
 
+            {{-- Leaving the call is not finishing the session: the session stays in progress (rejoin from the join page) until
+                 someone completes it. --}}
             <div class="tv-end">
-                <x-ui.confirm-form :action="route('app.telehealth.end', ['session' => $session])" title="End this session?"
-                    message="Everyone is removed from the call and the session is marked completed. This cannot be undone."
-                    confirmLabel="End session" buttonLabel="End session" buttonVariant="secondary" buttonIcon="phone-off" />
+                <x-ui.button variant="secondary" :href="route('app.telehealth.join', ['session' => $session])" icon="phone-off" class="tv-leave" data-call-leave>Leave call</x-ui.button>
+                <div class="tv-complete">
+                    <x-ui.confirm-form :action="route('app.telehealth.end', ['session' => $session])" title="Complete this session?"
+                        message="The call ends for everyone, and the session and its appointment are marked completed. This cannot be undone."
+                        confirmLabel="Complete session" buttonLabel="Complete session" buttonVariant="secondary" buttonIcon="circle-check" />
+                </div>
+                <p class="tv-end__hint">Leaving keeps the session open so you can rejoin. Complete it when the visit is over.</p>
             </div>
         </aside>
     </div>

@@ -52,12 +52,47 @@ class CallPageTest extends TelehealthTestCase
         $this->assertStringContainsString('In progress', $html);
         $this->assertStringContainsString('Copy Meeting Link', $html);
         $this->assertStringContainsString('data-url="'.e($session->join_url).'"', $html);
-        $this->assertStringContainsString('End session', $html);
+        $this->assertStringContainsString('Leave call', $html);
+        $this->assertStringContainsString('Complete session', $html);
 
         // No Daily script, no inline script: only our own files.
         $this->assertDoesNotMatchRegularExpression('/<script(?![^>]*\bsrc=)[^>]*>/i', $html);
         $this->assertDoesNotMatchRegularExpression('/<script[^>]+src="https?:\/\/(?!localhost)[^"]*daily/i', $html);
         $this->assertSame(['rooms.create', 'meeting-tokens.create'], $this->dailyOperations());
+    }
+
+    #[Test]
+    public function the_camera_and_microphone_choice_from_the_join_page_is_how_the_call_starts(): void
+    {
+        $tokenProperties = fn () => last($this->daily->callsOf('meeting-tokens.create'))['properties'];
+
+        // Without a choice (no script on the join page) both start on.
+        $both = $this->sessionAt('2026-10-02 08:05:00');
+        $this->as($this->drA)->post($this->url('app.telehealth.start', ['session' => $both->id]))->assertRedirect($this->callUrl($both));
+        $this->get($this->callUrl($both))->assertOk();
+        $this->assertArrayNotHasKey('start_video_off', $tokenProperties());
+        $this->assertArrayNotHasKey('start_audio_off', $tokenProperties());
+
+        // Camera switched off in the preview (drB's own session): the call starts with it off; the microphone stays on.
+        $other = $this->sessionAt('2026-10-02 08:05:00', $this->drB, $this->clientB);
+        $this->as($this->drB)->post($this->url('app.telehealth.start', ['session' => $other->id]), ['camera' => '0', 'microphone' => '1'])->assertRedirect($this->callUrl($other));
+        $this->get($this->callUrl($other))->assertOk();
+        $this->assertTrue($tokenProperties()['start_video_off']);
+        $this->assertArrayNotHasKey('start_audio_off', $tokenProperties());
+
+        // The choice is kept for that call in this browser: a refresh joins the same way (a fresh pass each load).
+        $this->get($this->callUrl($other))->assertOk();
+        $this->assertTrue($tokenProperties()['start_video_off']);
+
+        // Rejoining with a new choice replaces it: both off.
+        $this->post($this->url('app.telehealth.start', ['session' => $other->id]), ['camera' => '0', 'microphone' => '0'])->assertRedirect($this->callUrl($other));
+        $this->get($this->callUrl($other))->assertOk();
+        $this->assertTrue($tokenProperties()['start_video_off']);
+        $this->assertTrue($tokenProperties()['start_audio_off']);
+
+        // One call's choice never leaks into another call: the first session still starts with both on.
+        $this->as($this->drA)->get($this->callUrl($both))->assertOk();
+        $this->assertArrayNotHasKey('start_video_off', $tokenProperties());
     }
 
     #[Test]

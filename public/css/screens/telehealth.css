@@ -204,6 +204,14 @@
 .tj-chip__level { display: inline-block; width: 28px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .18); overflow: hidden; position: relative; }
 .tj-chip__level::after { content: ''; position: absolute; inset: 0; transform-origin: left; transform: scaleX(var(--level, 0)); background: #23b56b; }
 .tj-chip__level[hidden] { display: none; }
+/* Camera / Microphone switched off in the preview (the call starts that way). */
+.tj-chip__on, .tj-chip__off { display: inline-flex; }
+.tj-chip__off, .tj-chip.is-off .tj-chip__on { display: none; }
+.tj-chip.is-off .tj-chip__off { display: inline-flex; }
+.tj-chip.is-off { color: #ffb4b4; }
+.tj-chip[data-chip] .tj-chip__off svg { fill: none; stroke: #ffb4b4; }
+.tj-chip[data-chip="microphone"] .tj-chip__off svg rect { fill: none; }
+.tj-chip.is-off .tj-chip__ok, .tj-chip.is-off .tj-chip__level { display: none; }
 .tj-devices { position: absolute; left: 14px; right: 14px; bottom: 112px; display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 14px; border-radius: 10px; background: rgba(15, 22, 28, .86); color: #dce4ec; font-size: 12px; }
 .tj-devices[hidden] { display: none; }
 .tj-devices label { display: grid; gap: 4px; flex: 1 1 200px; }
@@ -302,8 +310,14 @@ button.tj-join { width: calc(100% - 28px); }
 .tv-card__text { margin: 0; color: #4d6389; font-size: 12px; line-height: 18px; }
 .tv-card__btn { width: 100%; gap: 8px; }
 .tv-card form { margin: 0; }
-.tv-end .btn { width: 100%; border-color: #f3c4c4; color: #c62828; }
-.tv-end .btn:hover { border-color: #eba3a3; background: #fff5f5; color: #b42318; }
+/* Leave call (hang up; the session stays open) and Complete session (finishes the visit, confirmed). */
+.tv-end { display: grid; gap: 10px; }
+.tv-end .btn { width: 100%; }
+.tv-end .tv-leave { border-color: #f3c4c4; color: #c62828; }
+.tv-end .tv-leave:hover { border-color: #eba3a3; background: #fff5f5; color: #b42318; }
+.tv-complete .btn { border-color: #d8e6fb; color: #0a54ea; }
+.tv-complete .btn:hover { border-color: #b9d2f7; background: #f3f8ff; color: #0846c4; }
+.tv-end__hint { margin: 0; color: #5e6b9f; font-size: 11.5px; line-height: 17px; text-align: center; }
 @media (max-width: 69.999rem) {
   .tv-stage { height: min(72vh, 620px); min-height: 360px; }
 }

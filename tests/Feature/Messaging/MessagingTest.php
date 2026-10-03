@@ -240,6 +240,8 @@ class MessagingTest extends ClientsTestCase
         $response->assertOk();
         $this->assertStringContainsString('private', (string) $response->headers->get('Cache-Control'));
         $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        // The attachment's own isolating policy survives the global security headers; only the framing rule is added.
+        $this->assertSame("default-src 'none'; sandbox; frame-ancestors 'self'", $response->headers->get('Content-Security-Policy'));
 
         $this->as($this->cy)->get($this->url('app.messages.attachments.show', ['attachment' => $row->id]))->assertNotFound();
         $this->app['auth']->forgetGuards();

@@ -33,19 +33,29 @@ final class SecurityHeaders
         $frameable = $route instanceof Route && str_starts_with((string) $route->getName(), 'app.');
 
         $headers = $response->headers;
-        $headers->set('Content-Security-Policy', implode('; ', array_filter([
-            "default-src 'self'",
-            "script-src 'self'",
-            "style-src 'self' 'unsafe-inline'",
-            "img-src 'self' data:",
-            "font-src 'self'",
-            "connect-src 'self'",
-            $videoCall ? "frame-src 'self' https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net" : null,
-            "object-src 'none'",
-            "base-uri 'self'",
-            "form-action 'self'",
-            $frameable ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
-        ])));
+        $frameAncestors = $frameable ? "frame-ancestors 'self'" : "frame-ancestors 'none'";
+        $own = $headers->get('Content-Security-Policy');
+        if (is_string($own) && trim($own) !== '') {
+            // A response that brings its own, stricter policy keeps it (message attachments: default-src 'none';
+            // sandbox). frame-ancestors does not fall back to default-src, so the framing rule is added when missing.
+            if (stripos($own, 'frame-ancestors') === false) {
+                $headers->set('Content-Security-Policy', rtrim(trim($own), ';').'; '.$frameAncestors);
+            }
+        } else {
+            $headers->set('Content-Security-Policy', implode('; ', array_filter([
+                "default-src 'self'",
+                "script-src 'self'",
+                "style-src 'self' 'unsafe-inline'",
+                "img-src 'self' data:",
+                "font-src 'self'",
+                "connect-src 'self'",
+                $videoCall ? "frame-src 'self' https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net" : null,
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                $frameAncestors,
+            ])));
+        }
         $headers->set('X-Frame-Options', $frameable ? 'SAMEORIGIN' : 'DENY');
         $headers->set('X-Content-Type-Options', 'nosniff');
         $headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');

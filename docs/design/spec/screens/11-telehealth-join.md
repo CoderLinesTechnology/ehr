@@ -18,6 +18,12 @@ x296–1084 (788), y104–926, bg `#fefefe`, radius 12, no border, faint shadow.
 
 ## Decisions / states beyond the comp
 * Video is Daily (docs/integrations/daily.md). Opening the page prepares the session's Daily room (created once, outside any transaction; no call while its window is right). The rail's location reads "Telehealth (Daily)".
+* **Camera / Microphone chips**: before the first test they run the device test (as in the comp). Once the preview
+  runs they are switches (`aria-pressed`): off stops that device (the camera light goes out), shows Lucide `video-off` /
+  `mic-off` in `#ffb4b4`, hides the ✓ and the level meter, and says "You will join with it off". The choice travels
+  with the Join form (`camera`, `microphone` hidden inputs, both 1 without the script) and the call starts that way.
+* **A running session** shows **Rejoin Session** and **Complete session** (confirmed; spec 12) — leaving a call never
+  completes the session.
 * **Join Session** is a POST form (`app.telehealth.start`): the room must be available, the session opens (join window rules unchanged) and the **call page** follows (spec 12). The button keeps the comp's look (`button.tj-join`, full width). Outside the join window it is a disabled bar with the opening time; a running session reads "Rejoin Session" with an "End session" button; with recording enabled for the organization a consent row appears. None of these show in the comp's state.
 * **Copy Meeting Link** copies the room's own link — the **client link**. One line under it (11.5px `#5d7096`, centred, 9px below): "Clients who open this link wait in the lobby until you admit them." It adds ~25px to the panel below the comp's last button. The link is rendered only for members who may join.
 * When video cannot be used, a notice box (`tj-notice-box`, 1px `#e3ecf8`, bg `#f7fafe`, icon `#2a73e8`, title 12.8px/600, text 11.8px) sits between the preview and a disabled Join bar, and Copy is not offered: **demo** session ("Demo session — video is not connected"), **not set up** (administrators — `telehealth.manage` — read what to configure, DAILY_API_KEY, with a link to Telehealth settings; others "Ask your administrator"), **unreachable** ("refresh in a moment"), **closed** (the room's time is over). The page never fails because of Daily.

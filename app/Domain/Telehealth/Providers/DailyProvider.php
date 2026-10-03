@@ -78,6 +78,12 @@ final class DailyProvider implements MeetingProvider
             'is_owner' => $spec->owner,
             'enable_prejoin_ui' => false,                   // WellNest's own device check already ran
         ];
+        if ($spec->startVideoOff) {
+            $properties['start_video_off'] = true;
+        }
+        if ($spec->startAudioOff) {
+            $properties['start_audio_off'] = true;
+        }
         if ($spec->record) {
             $properties['enable_recording'] = 'cloud';
             $properties['enable_recording_ui'] = true;

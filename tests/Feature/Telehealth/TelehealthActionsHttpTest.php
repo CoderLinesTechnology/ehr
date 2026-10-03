@@ -215,6 +215,42 @@ class TelehealthActionsHttpTest extends TelehealthTestCase
         $this->get($this->joinUrl($session))->assertRedirect($this->url('app.telehealth.show', ['session' => $session->id]));
     }
 
+    #[Test]
+    public function a_session_joined_early_can_be_completed_before_its_scheduled_start(): void
+    {
+        // The reported failure: joined inside the window (08:00 for 08:05) and completed before 08:05 — the appointment
+        // rule refused "Completed" until the scheduled start. A visit under way is never completed "too early".
+        $session = $this->sessionAt('2026-10-02 08:05:00');
+        $this->as($this->drA)->post($this->url('app.telehealth.start', ['session' => $session->id]))->assertRedirect($this->callUrl($session));
+
+        $this->post($this->url('app.telehealth.end', ['session' => $session->id]))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect($this->url('app.telehealth.show', ['session' => $session->id]));
+
+        $this->assertSame('completed', $session->refresh()->status->value);
+        $this->assertSame('completed', DB::table('appointments')->where('id', $session->appointment_id)->value('status'));
+    }
+
+    #[Test]
+    public function leaving_the_call_keeps_the_session_open_to_rejoin_or_complete(): void
+    {
+        $session = $this->sessionAt('2026-10-02 08:05:00');
+        $this->as($this->drA)->post($this->url('app.telehealth.start', ['session' => $session->id]))->assertRedirect($this->callUrl($session));
+
+        // "Leave call" is a plain way back to the join page: no state change; the session is still in progress there.
+        $call = $this->get($this->callUrl($session))->assertOk()->getContent();
+        $this->assertStringContainsString('href="'.$this->joinUrl($session).'"', $call);
+        $this->assertStringContainsString('data-call-leave', $call);
+        $this->assertStringContainsString('Complete session', $call);
+        $this->assertStringNotContainsString('End session', $call);
+
+        $join = $this->get($this->joinUrl($session))->assertOk()->getContent();
+        $this->assertSame('in_progress', $session->refresh()->status->value);
+        $this->assertStringContainsString('Rejoin Session', $join);
+        $this->assertStringContainsString('Complete this session?', $join);
+        $this->assertStringNotContainsString('End session', $join);
+    }
+
     // ── settings ─────────────────────────────────────────────────────────────
 
     #[Test]

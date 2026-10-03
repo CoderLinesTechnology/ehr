@@ -23,8 +23,15 @@ Grid `minmax(0,1fr) 314px`, gap 20, wrapper `margin-inline:-6px 1px` (≥70rem) 
   * **Recording** — only when the organization allows recording: a pill ("Client consented" green / "Not recorded"
     grey), one line of explanation, and for viewers with clinical access the consent toggle ("Client consents to
     recording" / "Withdraw consent (stops recording)"). Changing it reloads the page and with it the pass.
-  * **End session** — full-width outline danger button (`#c62828` on white, border `#f3c4c4`, Lucide `phone-off`)
-    behind a confirmation dialog ("Everyone is removed from the call and the session is marked completed.").
+  * **Leave call** — full-width outline danger button (`#c62828` on white, border `#f3c4c4`, Lucide `phone-off`): a link
+    to the join page. Leaving the call is NOT finishing the session: it stays in progress, so it can be rejoined
+    (or completed) from the join page. No "Leave the call?" prompt (the explicit way out).
+  * **Complete session** — full-width outline in the primary blue (`#0a54ea`, border `#d8e6fb`, Lucide
+    `circle-check`) behind a confirmation ("The call ends for everyone, and the session and its appointment are
+    marked completed."). A session started early (inside the join window) can be completed before its scheduled
+    start: finishing a visit that is under way is never "too early" (TransitionAppointment).
+  * One hint line under them (11.5px `#5e6b9f`, centred): "Leaving keeps the session open so you can rejoin.
+    Complete it when the visit is over."
 * **Phone (<70rem)**: one column; the stage is `min(72vh, 620px)` (min 360) and the rail follows below. At 390 px:
   no horizontal scroll (`scrollWidth === innerWidth`), stage 332x608, rail from y887.
 
@@ -52,13 +59,14 @@ only its classes and inline geometry.
 * **Window bar** (`.tv-bar`, shown floating and in full screen): `#17212a`, white client name 12.5/600 (ellipsis),
   then 30x30 icon buttons `#c9d6ea` (hover white on 12% white, focus ring `#8fbaff`): **Expand call**
   (`maximize-2`, back to the call view), **Full screen** (`maximize`, `aria-pressed`), **Move to next corner**
-  (`move`; bottom-right → bottom-left → top-left → top-right, the keyboard alternative to dragging), **End session**
-  (`phone-off`, `#ffb0b0`, hover on `#c62828`). Every control has a name (`aria-label` + `title`).
+  (`move`; bottom-right → bottom-left → top-left → top-right, the keyboard alternative to dragging), **Leave call**
+  (`phone-off`, `#ffb0b0`, hover on `#c62828`; the whole tab goes to the page being viewed in the app frame, the
+  session stays in progress). Every control has a name (`aria-label` + `title`).
 * **Drag**: pointer events on the bar (mouse and touch, `touch-action:none`, pointer capture; both iframes ignore
   the pointer while dragging), clamped to the float area. The position is kept as a fraction of the free space, so it
   survives resizes, and in `sessionStorage` (`wellnest:call-window`, try/catch) so it survives a refresh.
 * **Full screen**: `requestFullscreen()` on the dock — never on or around a moved iframe — from the header button or
-  the bar; the bar stays (name, Full screen pressed, End session; Expand and Move hidden). Esc or the button exits
+  the bar; the bar stays (name, Full screen pressed, Leave call; Expand and Move hidden). Esc or the button exits
   (`fullscreenchange` keeps `aria-pressed` and the title "Exit full screen (Esc)" in step; the visible label stays
   "Full screen", because a toggle's name must not change while it carries `aria-pressed`). Hidden when
   `document.fullscreenEnabled` is false (iPhone Safari). Daily's own full-screen control still works
@@ -97,9 +105,11 @@ With a call, the page is a **call host** (`.tv[data-call-host="/o/{slug}"]`, plu
   (URL characters only — no scheme, `//`, backslash, quotes, fragment, control characters, dot segments or
   encoded slash/backslash/dot/control characters; ≤ 512 bytes: `CallPageRequest::appPath()`); the script reopens it
   with the call floating at the remembered position.
-* **Leaving**: `beforeunload` asks while the call runs, except right after this page's own form submits (End session,
-  consent, sign out), sign-out inside the frame, and the script's own redirects above. End session in the bar brings
-  the call view back with the confirmation open; cancelling returns to the floating window.
+* **Leaving**: `beforeunload` asks while the call runs, except for Leave call, right after this page's own form
+  submits (Complete session, consent, sign out), sign-out inside the frame, and the script's own redirects above.
+* **Camera / microphone**: the call starts the way the join page's switches were left (pass properties
+  `start_video_off` / `start_audio_off`, remembered per session in the staff member's server session so a refresh
+  joins the same way); during the call they are switched with Daily Prebuilt's own controls.
 * **Headers** (`SecurityHeaders`): staff-app pages (`app.*`) send `frame-ancestors 'self'` + `X-Frame-Options:
   SAMEORIGIN`; sign-in, account, platform console, webhooks and responses without a route keep `'none'` + `DENY`.
   Pages inside the frame keep their own Permissions-Policy.

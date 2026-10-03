@@ -142,9 +142,10 @@ final class SessionController extends Controller
         }
 
         $membership = tenant()->membership();
+        $devices = $request->session()->get(SessionActionController::devicesKey($session), []);
         $pass = null;
-        [$video] = $this->video($session, function () use ($issue, $session, $membership, &$pass) {
-            $pass = $issue($session, $membership);
+        [$video] = $this->video($session, function () use ($issue, $session, $membership, $devices, &$pass) {
+            $pass = $issue($session, $membership, ($devices['camera_off'] ?? false) === true, ($devices['microphone_off'] ?? false) === true);
 
             return null;
         });

@@ -64,6 +64,9 @@
             @if ($canJoinNow)
                 <form method="POST" action="{{ route('app.telehealth.start', ['session' => $session]) }}" class="tj-join-form" data-telehealth-join data-submit-once>
                     @csrf
+                    {{-- Camera / microphone on or off, set by the preview's switches (both on without the script). --}}
+                    <input type="hidden" name="camera" value="1" data-device-choice="camera">
+                    <input type="hidden" name="microphone" value="1" data-device-choice="microphone">
                     <button type="submit" class="tj-join"><x-ui.icon name="video" :size="19" :stroke="2" />{{ $running ? 'Rejoin Session' : 'Join Session' }}</button>
                 </form>
             @else
@@ -79,10 +82,12 @@
             @endif
 
             @if ($running)
-                <form method="POST" action="{{ route('app.telehealth.end', ['session' => $session]) }}" class="tj-end" data-submit-once>
-                    @csrf
-                    <button type="submit" class="tj-btn tj-btn--outline">End session</button>
-                </form>
+                {{-- The session stays in progress after a call is left; completing it is a separate, confirmed step. --}}
+                <div class="tj-end">
+                    <x-ui.confirm-form :action="route('app.telehealth.end', ['session' => $session])" title="Complete this session?"
+                        message="The call ends for everyone, and the session and its appointment are marked completed. This cannot be undone."
+                        confirmLabel="Complete session" buttonLabel="Complete session" buttonVariant="secondary" buttonIcon="circle-check" />
+                </div>
             @endif
 
             @if ($recordingOn)
