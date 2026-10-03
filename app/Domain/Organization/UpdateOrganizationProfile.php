@@ -31,6 +31,7 @@ final class UpdateOrganizationProfile
     private const TEXT = [
         'legal_name' => 200, 'email' => 254, 'phone' => 32, 'website' => 255,
         'address_line1' => 200, 'address_line2' => 200, 'city' => 120, 'region' => 120, 'postal_code' => 32,
+        'tagline' => 120, 'description' => 500,
     ];
 
     public function __construct(
@@ -41,9 +42,9 @@ final class UpdateOrganizationProfile
     ) {}
 
     /**
-     * @param  array<string, mixed>  $profile  name, legal_name, email, phone, website, address_line1/2, city, region,
+     * @param  array<string, mixed>  $profile  name, legal_name, tagline, description, email, phone, website, address_line1/2, city, region,
      *                                         postal_code, country_code, timezone, currency, locale
-     * @param  array<string, mixed>  $regionalFormats  general.* setting key => value (date_format, time_format, week_starts_on)
+     * @param  array<string, mixed>  $regionalFormats  general.* and branding.* setting key => value (date_format, time_format, week_starts_on, primary/secondary colour)
      * @return list<string> the profile fields that changed (e.g. ["timezone", "currency"])
      *
      * @throws DomainException
@@ -79,10 +80,13 @@ final class UpdateOrganizationProfile
         return $changed;
     }
 
-    /** Only the `general` group belongs to this screen; scheduling and client settings have their own. */
+    /** Only the `general` and `branding` groups belong to this screen; scheduling and client settings have their own. */
     private function assertGeneralSettings(array $values): void
     {
-        $allowed = array_keys(SettingsRegistry::forScope('organization', 'general'));
+        $allowed = array_merge(
+            array_keys(SettingsRegistry::forScope('organization', 'general')),
+            array_keys(SettingsRegistry::forScope('organization', 'branding')),
+        );
 
         if (array_diff(array_map('strval', array_keys($values)), $allowed) !== []) {
             throw new DomainException('One of the submitted settings is not recognised.', 'unknown_setting', 'settings');

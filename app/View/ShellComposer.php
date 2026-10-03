@@ -92,7 +92,7 @@ final class ShellComposer
             'organization' => $organization ? [
                 'name' => $organization->name,
                 'slug' => $organization->slug,
-                'logoUrl' => null,
+                'logoUrl' => \App\Http\Controllers\App\Settings\OrganizationController::logoUrl($organization),
                 'isDemoDataPresent' => Client::query()->demo()->exists(),
             ] : null,
             'organizations' => $user ? $this->organizations($user, $organization) : [],

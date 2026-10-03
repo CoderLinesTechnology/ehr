@@ -22,7 +22,7 @@ final class UpdateMember
     ) {}
 
     /**
-     * @param  array{title?: ?string, credentials?: ?string, is_provider?: bool, color?: ?string}  $profile
+     * @param  array{name_prefix?: ?string, title?: ?string, credentials?: ?string, is_provider?: bool, color?: ?string}  $profile
      * @param  list<string>  $roleIds  the member's complete set of roles after the change
      *
      * @throws DomainException
@@ -98,7 +98,7 @@ final class UpdateMember
     private function cleaned(array $profile): array
     {
         $clean = [];
-        foreach (['title', 'credentials', 'color'] as $key) {
+        foreach (['name_prefix', 'title', 'credentials', 'color'] as $key) {
             if (array_key_exists($key, $profile)) {
                 $value = $profile[$key] === null ? null : trim((string) $profile[$key]);
                 $value = $value === '' ? null : $value;

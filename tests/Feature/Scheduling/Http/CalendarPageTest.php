@@ -143,18 +143,29 @@ class CalendarPageTest extends SchedulingHttpTestCase
     public function overlapping_events_share_a_row_by_their_drawn_height_not_their_duration(): void
     {
         // 9:00-10:00 and 10:00-11:00 do not overlap in time, but a card is at least 67px (1.74 rows) tall.
+        // Back-to-back appointments stack (side-by-side would read as a double-booking);
+        // the earlier card stops just above the next one.
         $layout = EventLayout::place([
             ['key' => 'a', 'start' => 9 * 60, 'end' => 10 * 60],
             ['key' => 'b', 'start' => 10 * 60, 'end' => 11 * 60],
             ['key' => 'c', 'start' => 15 * 60, 'end' => 16 * 60],
         ], 8 * 60, 18 * 60, 38.5, 67.0);
 
-        $this->assertSame(2, $layout['placed']['a']['lanes']);
-        $this->assertSame(0, $layout['placed']['a']['lane']);
-        $this->assertSame(1, $layout['placed']['b']['lane']);
-        $this->assertSame(1, $layout['placed']['c']['lanes']);
+        $this->assertSame(1, $layout['placed']['a']['lanes']);
+        $this->assertSame(0, $layout['placed']['b']['lane']);
         $this->assertSame(38.5, $layout['placed']['a']['top']);
-        $this->assertSame(67.0, $layout['placed']['a']['height']);
+        $this->assertSame(36.5, $layout['placed']['a']['height']);
+        $this->assertSame(67.0, $layout['placed']['c']['height']);
+
+        // A real overlap goes side by side.
+        $overlap = EventLayout::place([
+            ['key' => 'x', 'start' => 9 * 60, 'end' => 10 * 60],
+            ['key' => 'y', 'start' => 9 * 60 + 30, 'end' => 10 * 60 + 30],
+        ], 8 * 60, 18 * 60, 38.5, 67.0);
+
+        $this->assertSame(2, $overlap['placed']['x']['lanes']);
+        $this->assertSame(1, $overlap['placed']['y']['lane']);
+        $this->assertSame(67.0, $overlap['placed']['x']['height']);
     }
 
     #[Test]
