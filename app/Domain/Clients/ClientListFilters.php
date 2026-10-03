@@ -22,6 +22,9 @@ final readonly class ClientListFilters
 
     public const UNASSIGNED = 'none';
 
+    /** Location filter value: clients whose primary location is "Virtual (telehealth)". */
+    public const VIRTUAL = 'virtual';
+
     public function __construct(
         public string $q = '',
         public string $status = self::STATUS_OPEN,
@@ -30,13 +33,17 @@ final readonly class ClientListFilters
         public ?string $clinician = null,
         public string $sort = 'last_name',
         public string $direction = 'asc',
-        /** A location id (the client's primary location). */
+        /** A location id (the client's primary location), or "virtual". */
         public ?string $location = null,
         /** Y-m-d: only clients with a completed visit on or after / before this day (the organization's calendar). */
         public ?string $visitedFrom = null,
         public ?string $visitedTo = null,
         /** Only clients whose primary clinician is the viewer. */
         public bool $mine = false,
+        /** adult | minor | couple */
+        public ?string $type = null,
+        /** self_pay | insurance */
+        public ?string $billing = null,
     ) {}
 
     /** @param array<string, mixed> $query */
@@ -65,10 +72,12 @@ final readonly class ClientListFilters
             clinician: ($clinician === self::UNASSIGNED || Str::isUuid($clinician)) ? $clinician : null,
             sort: $oneOf($text('sort'), self::SORTS, 'last_name'),
             direction: strtolower($text('direction')) === 'desc' ? 'desc' : 'asc',
-            location: Str::isUuid($location) ? $location : null,
+            location: (Str::isUuid($location) || $location === self::VIRTUAL) ? strtolower($location) : null,
             visitedFrom: $from,
             visitedTo: $to,
             mine: in_array($text('mine'), ['1', 'on', 'true'], true),
+            type: in_array($text('type'), ClientType::values(), true) ? $text('type') : null,
+            billing: in_array($text('billing'), BillingType::values(), true) ? $text('billing') : null,
         );
     }
 
@@ -82,7 +91,9 @@ final readonly class ClientListFilters
             || $this->location !== null
             || $this->visitedFrom !== null
             || $this->visitedTo !== null
-            || $this->mine;
+            || $this->mine
+            || $this->type !== null
+            || $this->billing !== null;
     }
 
     /** @return list<string> the status values the filter allows */

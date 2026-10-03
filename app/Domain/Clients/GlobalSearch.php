@@ -7,6 +7,7 @@ use App\Domain\Saas\EntitlementService;
 use App\Domain\Saas\FeatureRegistry;
 use App\Domain\Tenancy\TenantContext;
 use App\Domain\Tenancy\TenantMismatch;
+use App\Models\Client;
 use App\Models\OrganizationMembership;
 
 /**
@@ -60,6 +61,26 @@ final class GlobalSearch
             clients: ($text !== '' && $canSearchClients) ? $this->clients->find($membership, $text, self::CLIENT_LIMIT) : SearchHits::none(),
             staff: ($text !== '' && $canSearchStaff) ? $this->staff($text) : SearchHits::none(),
         );
+    }
+
+    /**
+     * The clients section alone (the client pickers' type-ahead): the same guard and bound as the page,
+     * without searching staff.
+     *
+     * @return SearchHits<Client>
+     */
+    public function clients(OrganizationMembership $membership, ?string $term): SearchHits
+    {
+        $organization = $this->tenant->organizationOrFail();
+
+        if ($membership->organization_id !== $organization->id) {
+            throw new TenantMismatch('The searching member does not belong to the current organization.');
+        }
+
+        $text = trim(mb_substr(trim((string) $term), 0, ClientSearchTerm::MAX_LENGTH));
+        $allowed = ClientVisibility::hasAnyAccess($membership) && $this->entitlements->allows($organization, FeatureRegistry::CLIENTS);
+
+        return ($text !== '' && $allowed) ? $this->clients->find($membership, $text, self::CLIENT_LIMIT) : SearchHits::none();
     }
 
     /**

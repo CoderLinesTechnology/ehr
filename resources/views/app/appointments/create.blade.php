@@ -9,7 +9,15 @@
 <x-layouts.app title="New appointment">
     @push('styles')
         <link rel="stylesheet" href="{{ asset('css/screens/calendar.css') }}?v={{ filemtime(public_path('css/screens/calendar.css')) }}">
+        @if ($newClient)
+            <link rel="stylesheet" href="{{ asset('css/screens/clients.css') }}?v={{ filemtime(public_path('css/screens/clients.css')) }}">
+        @endif
     @endpush
+    @if ($newClient)
+        @push('scripts')
+            <script src="{{ asset('js/screens/client-form.js') }}?v={{ filemtime(public_path('js/screens/client-form.js')) }}" defer></script>
+        @endpush
+    @endif
 
     <x-ui.page-header title="New appointment" description="Choose who, what and when. Free times come from the clinician's availability." icon="calendar-plus" icon-shape="square" icon-tone="blue">
         <x-slot:breadcrumbs>
@@ -18,7 +26,7 @@
     </x-ui.page-header>
 
     <div class="appt-stack">
-        <form method="GET" action="{{ route('app.appointments.create') }}" class="card appt-card" aria-label="Find a time">
+        <form method="GET" action="{{ route('app.appointments.create') }}" class="card appt-card" aria-label="Find a time" id="appt-step1">
             <h2 class="appt-card__title">1. Who and what</h2>
             <div class="form-grid">
                 <div class="form-grid__full">
@@ -35,7 +43,7 @@
                         </x-ui.field>
                         @if ($term !== '')
                             @if ($matches->isEmpty())
-                                <p class="text-muted text-sm">No client matches. They may be archived, or not yours to see.</p>
+                                <p class="text-muted text-sm">No client matches. They may be archived, or not yours to see.@if ($newClient) <a href="#new-client" data-open-details="new-client">Add them as a new client</a>.@endif</p>
                             @else
                                 <div class="option-list" data-choice-group="1" role="radiogroup" aria-label="Matching clients">
                                     @foreach ($matches as $match)
@@ -46,6 +54,9 @@
                                     @endforeach
                                 </div>
                             @endif
+                        @endif
+                        @if ($newClient && ($term === '' || $matches->isNotEmpty()))
+                            <p class="text-sm appt-newclient-hint">Someone new? <a href="#new-client" data-open-details="new-client">Add a new client</a> without leaving this page.</p>
                         @endif
                     @endif
                 </div>
@@ -73,6 +84,27 @@
             </div>
             <div class="form-actions"><x-ui.button type="submit" icon="search">Show available times</x-ui.button></div>
         </form>
+
+        @if ($newClient)
+            {{-- Its own form (never inside the GET form above): posts to clients.store and comes back here with the client chosen. --}}
+            <details class="card appt-card appt-newclient" id="new-client" @if ($newClient['open']) open @endif>
+                <summary class="appt-newclient__summary"><x-ui.icon name="user-plus" :size="18" /><span>Add a new client</span></summary>
+                <form method="POST" action="{{ route('app.clients.store') }}" class="form appt-newclient__form" data-submit-once data-carry-from="appt-step1" novalidate>
+                    @csrf
+                    <input type="hidden" name="then" value="appointment">
+                    @foreach (['service' => $service?->id, 'clinician' => $clinician?->id, 'modality' => $modality?->value, 'location' => $location?->id, 'date' => $date, 'time' => $time] as $key => $value)
+                        <input type="hidden" name="carry[{{ $key }}]" value="{{ $value }}" data-carry="{{ $key }}">
+                    @endforeach
+                    @if ($errors->any() && old('then') === 'appointment')
+                        <x-ui.alert tone="danger" title="The client could not be added">Check the fields marked below.</x-ui.alert>
+                    @endif
+                    @include('app.clients._form', $newClient + ['compact' => true])
+                    <div class="form-actions">
+                        <x-ui.button type="submit" icon="plus">Add client and continue</x-ui.button>
+                    </div>
+                </form>
+            </details>
+        @endif
 
         @if ($slotDays !== null)
             <section class="card appt-card" aria-labelledby="slots-title">

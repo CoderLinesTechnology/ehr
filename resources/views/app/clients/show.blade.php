@@ -4,23 +4,52 @@
 
     <div class="profile-grid">
         <div class="profile-stack">
-            <x-ui.card title="Personal details">
+            @if ($coupleLinks !== [])
+                <x-ui.card :title="$client->isCouple() ? 'Couple members' : 'Couples'" :description="$client->isCouple() ? 'The two people this couple record is for.' : 'Couple records this client belongs to.'">
+                    <ul class="link-list">
+                        @foreach ($coupleLinks as $line)
+                            @foreach ($line['items'] as $item)
+                                <li class="link-list__item">
+                                    <x-ui.avatar :name="$item['text']" size="sm" :decorative="true" />
+                                    <a href="{{ route('app.clients.show', ['client' => $item['client']]) }}">{{ $item['text'] }}</a>
+                                    <span class="text-muted">{{ $line['label'] === 'Members' ? 'Member' : 'Couple' }}</span>
+                                </li>
+                            @endforeach
+                        @endforeach
+                    </ul>
+                </x-ui.card>
+            @endif
+
+            <x-ui.card :title="$client->isCouple() ? 'Couple details' : 'Personal details'">
                 <x-ui.dl>
+                    <x-ui.dl-item label="Client type">{{ $client->client_type->label() }}</x-ui.dl-item>
                     <x-ui.dl-item label="First name">{{ $client->first_name }}</x-ui.dl-item>
                     <x-ui.dl-item label="Last name">{{ $client->last_name }}</x-ui.dl-item>
+                    @unless ($client->isCouple())
                     <x-ui.dl-item label="Middle name">{{ $client->middle_name }}</x-ui.dl-item>
                     <x-ui.dl-item label="Preferred name">{{ $client->preferred_name }}</x-ui.dl-item>
                     <x-ui.dl-item label="Date of birth">@if ($client->date_of_birth){{ fmt()->date($client->date_of_birth) }} ({{ $client->age() }})@endif</x-ui.dl-item>
                     <x-ui.dl-item label="Sex">{{ $client->sex ? \App\Domain\Clients\ClientSex::tryFrom($client->sex)?->label() : '' }}</x-ui.dl-item>
                     <x-ui.dl-item label="Gender identity">{{ $client->gender_identity }}</x-ui.dl-item>
                     <x-ui.dl-item label="Pronouns">{{ $client->pronouns }}</x-ui.dl-item>
+                    @endunless
                 </x-ui.dl>
             </x-ui.card>
 
             <x-ui.card title="Contact">
                 <x-ui.dl>
-                    <x-ui.dl-item label="Phone">@if (filled($client->phone))<a href="tel:{{ $client->phone }}">{{ \App\Support\PhoneNumbers::display($client->phone, $country) }}</a>@endif</x-ui.dl-item>
-                    <x-ui.dl-item label="Email">@if (filled($client->email))<a href="mailto:{{ $client->email }}">{{ $client->email }}</a>@endif</x-ui.dl-item>
+                    <x-ui.dl-item label="Phone numbers">
+                        @forelse ($points['phone'] as $p)
+                            <span class="point-line"><a href="tel:{{ $p['value'] }}">{{ \App\Support\PhoneNumbers::display($p['value'], $country) }}</a> <span class="text-muted">{{ \App\Domain\Clients\ContactPointLabel::from($p['label'])->label() }}</span>@if ($p['is_primary'] && count($points['phone']) > 1) <x-ui.badge tone="info">Primary</x-ui.badge>@endif</span>
+                        @empty
+                        @endforelse
+                    </x-ui.dl-item>
+                    <x-ui.dl-item label="Email addresses">
+                        @forelse ($points['email'] as $p)
+                            <span class="point-line"><a href="mailto:{{ $p['value'] }}">{{ $p['value'] }}</a> <span class="text-muted">{{ \App\Domain\Clients\ContactPointLabel::from($p['label'])->label() }}</span>@if ($p['is_primary'] && count($points['email']) > 1) <x-ui.badge tone="info">Primary</x-ui.badge>@endif</span>
+                        @empty
+                        @endforelse
+                    </x-ui.dl-item>
                     <x-ui.dl-item label="Preferred contact method">{{ $client->preferred_contact_method ? \App\Domain\Clients\ContactMethod::tryFrom($client->preferred_contact_method)?->label() : '' }}</x-ui.dl-item>
                     <x-ui.dl-item label="Address" :wide="true">{{ collect([$client->address_line1, $client->address_line2, $client->city, $client->region, $client->postal_code, $client->country_code ? (\App\Support\Regions::countries()[$client->country_code] ?? $client->country_code) : null])->filter()->implode(', ') }}</x-ui.dl-item>
                 </x-ui.dl>
@@ -29,7 +58,8 @@
             <x-ui.card title="Care">
                 <x-ui.dl>
                     <x-ui.dl-item label="Primary clinician">{{ $client->primaryClinician?->displayName() }}</x-ui.dl-item>
-                    <x-ui.dl-item label="Primary location">{{ $client->primaryLocation?->name }}</x-ui.dl-item>
+                    <x-ui.dl-item label="Primary location">{{ $client->is_virtual ? 'Virtual (telehealth)' : $client->primaryLocation?->name }}</x-ui.dl-item>
+                    <x-ui.dl-item label="Billing">{{ $client->billing_type->label() }}</x-ui.dl-item>
                     <x-ui.dl-item label="Referral source">{{ $client->referral_source }}</x-ui.dl-item>
                     <x-ui.dl-item label="Registered">{{ fmt()->localDate($client->created_at) }}</x-ui.dl-item>
                 </x-ui.dl>
@@ -93,12 +123,12 @@
                 @forelse ($client->contacts->take(3) as $contact)
                     <div class="contact-list__item">
                         <div>
-                            <p class="contact-list__name">{{ $contact->name }} @if ($contact->is_emergency_contact)<x-ui.badge tone="danger">Emergency</x-ui.badge>@endif</p>
-                            <p class="contact-list__line">{{ collect([$contact->relationship, filled($contact->phone) ? \App\Support\PhoneNumbers::display($contact->phone, $country) : null])->filter()->implode(' · ') }}</p>
+                            <p class="contact-list__name">{{ $contact->name }} @if ($contact->isGuardian())<x-ui.badge tone="info">Guardian</x-ui.badge>@endif @if ($contact->is_emergency_contact)<x-ui.badge tone="danger">Emergency</x-ui.badge>@endif</p>
+                            <p class="contact-list__line">{{ collect([$contact->relationshipLabel(), filled($contact->phone) ? \App\Support\PhoneNumbers::display($contact->phone, $country) : null])->filter()->implode(' · ') }}</p>
                         </div>
                     </div>
                 @empty
-                    <p class="text-muted">No emergency or other contacts yet.</p>
+                    <p class="text-muted">{{ $client->isMinor() ? 'No parent or guardian on file yet.' : 'No emergency or other contacts yet.' }}</p>
                 @endforelse
             </x-ui.card>
         </div>

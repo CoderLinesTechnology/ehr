@@ -2,8 +2,11 @@
     @push('styles')
         <link rel="stylesheet" href="{{ asset('css/screens/clients.css') }}?v={{ filemtime(public_path('css/screens/clients.css')) }}">
     @endpush
+    @push('scripts')
+        <script src="{{ asset('js/screens/client-form.js') }}?v={{ filemtime(public_path('js/screens/client-form.js')) }}" defer></script>
+    @endpush
     <x-slot:breadcrumbs><x-ui.breadcrumbs :items="[['label' => 'Clients', 'url' => route('app.clients.index')], ['label' => 'Add client']]" /></x-slot:breadcrumbs>
-    <x-ui.page-header title="Add client" description="Register a new client. Only the name is required unless your organization asks for more." icon="user-plus" />
+    <x-ui.page-header title="Add client" description="Register an adult, a minor (with a parent or guardian) or a couple. Only the name is required unless your organization asks for more." icon="user-plus" />
 
     <form method="POST" action="{{ route('app.clients.store') }}" class="form" data-submit-once novalidate>
         @csrf

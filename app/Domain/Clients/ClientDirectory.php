@@ -19,7 +19,7 @@ final class ClientDirectory
     public const COLUMNS = [
         'id', 'organization_id', 'record_environment', 'client_number', 'status',
         'first_name', 'last_name', 'preferred_name', 'date_of_birth', 'phone',
-        'primary_clinician_membership_id', 'created_at',
+        'primary_clinician_membership_id', 'created_at', 'client_type', 'billing_type', 'is_virtual',
     ];
 
     /** @return Builder<Client> */
@@ -42,8 +42,18 @@ final class ClientDirectory
             $query->where('primary_clinician_membership_id', $filters->clinician);
         }
 
-        if ($filters->location !== null) {
+        if ($filters->location === ClientListFilters::VIRTUAL) {
+            $query->where('is_virtual', true);
+        } elseif ($filters->location !== null) {
             $query->where('primary_location_id', $filters->location);
+        }
+
+        if ($filters->type !== null) {
+            $query->where('client_type', $filters->type);
+        }
+
+        if ($filters->billing !== null) {
+            $query->where('billing_type', $filters->billing);
         }
 
         if ($filters->mine) {
@@ -78,7 +88,7 @@ final class ClientDirectory
     }
 
     /**
-     * The list screen's query: query() plus the e-mail the Contact column shows.
+     * The list screen's query: query() plus the primary e-mail the Client column shows.
      * (query() stays e-mail-free for every other consumer.)
      *
      * @return Builder<Client>

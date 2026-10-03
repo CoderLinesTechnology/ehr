@@ -124,7 +124,7 @@ Each entity has one owning module; other modules reference it, never copy it.
 | Identity | users, organization_memberships, roles, permissions, role_permissions, membership_roles, platform_user_roles | Phase 1 |
 | Organization | locations, organization_settings, organization_counters | Phase 1 |
 | Audit | audit_logs | Phase 1 |
-| Clients | clients, client_contacts, timeline_entries | Phase 1 |
+| Clients | clients (type adult/minor/couple, billing type, virtual), client_contact_points (several e-mails/phones; the primary mirrored on clients.email/phone; all searchable through clients.contact_search, kept by a trigger), client_contacts (+ relationship_type), client_couple_members (couple ↔ its two members, composite FKs incl. environment), timeline_entries | Phase 1 (+ client model 2026-10) |
 | Scheduling | services, service_providers, service_locations, availability_rules, availability_rule_services, blocked_times, appointments, appointment_status_histories | Phase 1 |
 | Communications | notifications, templates, deliveries, conversations, messages | Phase 2 |
 | Tasks | tasks | Phase 2 |

@@ -2,8 +2,11 @@
     @push('styles')
         <link rel="stylesheet" href="{{ asset('css/screens/clients.css') }}?v={{ filemtime(public_path('css/screens/clients.css')) }}">
     @endpush
+    @push('scripts')
+        <script src="{{ asset('js/screens/client-form.js') }}?v={{ filemtime(public_path('js/screens/client-form.js')) }}" defer></script>
+    @endpush
     <x-slot:breadcrumbs><x-ui.breadcrumbs :items="[['label' => 'Clients', 'url' => route('app.clients.index')], ['label' => $client->displayName(), 'url' => route('app.clients.show', ['client' => $client])], ['label' => 'Edit']]" /></x-slot:breadcrumbs>
-    <x-ui.page-header :title="'Edit '.$client->displayName()" :description="$client->formattedNumber()" icon="pencil" />
+    <x-ui.page-header :title="'Edit '.$client->displayName()" :description="$client->formattedNumber().' · '.$client->client_type->label()" icon="pencil" />
 
     <form method="POST" action="{{ route('app.clients.update', ['client' => $client]) }}" class="form" data-submit-once novalidate>
         @csrf

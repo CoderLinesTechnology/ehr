@@ -10,9 +10,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Finds clients by what staff type: name, e-mail, phone number (local or
- * international) or client number. Always confined to the organization
+ * international; ANY of the client's e-mails and phones, not only the
+ * primary ones) or client number. Always confined to the organization
  * (tenant scope) and to the clients the searcher may see (ClientVisibility);
  * always bounded.
+ *
+ * The other e-mails and phones reach search_text through clients.contact_search,
+ * which a trigger on client_contact_points keeps current: the search stays one
+ * trigram-indexed column, with no join and no OR across tables.
  *
  * The text match is `search_text ILIKE '%word%'`, which the trigram GIN index
  * on clients.search_text serves. Keep that exact shape when changing this

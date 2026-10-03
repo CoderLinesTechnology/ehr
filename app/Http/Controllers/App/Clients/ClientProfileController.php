@@ -70,7 +70,18 @@ abstract class ClientProfileController extends Controller
                 'update' => Gate::allows('update', $client),
                 'archive' => Gate::allows('archive', $client),
             ],
-            'bookUrl' => $canBook ? route('app.appointments.create', ['client' => $client]) : null,
+            'bookUrl' => $canBook ? route('app.appointments.create', self::bookingQuery($client)) : null,
         ];
+    }
+
+    /**
+     * New appointment's query for this client: a virtual client ("Primary location: Virtual (telehealth)")
+     * books as telehealth by default (the booker can still switch to in person).
+     *
+     * @return array<string, string>
+     */
+    public static function bookingQuery(Client $client): array
+    {
+        return ['client' => $client->id] + ($client->is_virtual ? ['modality' => 'telehealth'] : []);
     }
 }

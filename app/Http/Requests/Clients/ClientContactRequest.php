@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Clients;
 
 use App\Domain\Clients\ClientAttributes;
+use App\Domain\Clients\RelationshipType;
 use App\Support\PhoneNumbers;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * An emergency / other contact of a client. Authorized by the route
@@ -25,6 +27,7 @@ final class ClientContactRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:150'],
+            'relationship_type' => ['nullable', Rule::in(RelationshipType::values())],
             'relationship' => ['nullable', 'string', 'max:60'],
             'phone' => ['nullable', 'string', 'max:32', function (string $attribute, mixed $value, Closure $fail) use ($organization): void {
                 if (PhoneNumbers::normalize((string) $value, $organization->country_code) === null) {
@@ -43,6 +46,7 @@ final class ClientContactRequest extends FormRequest
         return [
             'name.required' => 'Enter the contact\'s name.',
             'email.email' => 'Enter a valid email address, like name@example.com.',
+            'relationship_type.in' => 'Choose a relationship from the list.',
             '*.max' => 'The :attribute is too long: use at most :max characters.',
         ];
     }

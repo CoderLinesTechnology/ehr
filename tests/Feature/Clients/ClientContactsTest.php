@@ -208,7 +208,7 @@ class ClientContactsTest extends ClientsTestCase
         $entry = $this->auditEntries('client_contact.deleted')->first();
         $this->assertSame($contact->id, $entry->subject_id);
         $this->assertSame($this->created->ownerMembership->user_id, $entry->actor_user_id);
-        $this->assertEquals(['name' => 'Kofi Owusu', 'relationship' => 'Brother', 'phone' => '+233244100002', 'email' => 'kofi@example.org', 'is_emergency_contact' => true], $entry->before);
+        $this->assertEquals(['name' => 'Kofi Owusu', 'relationship' => 'Brother', 'relationship_type' => null, 'phone' => '+233244100002', 'email' => 'kofi@example.org', 'is_emergency_contact' => true], $entry->before);
         $this->assertStringNotContainsString('nights', json_encode($entry));
     }
 

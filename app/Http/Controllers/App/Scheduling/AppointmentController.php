@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\App\Scheduling;
 
+use App\Domain\Clients\ClientFormOptions;
 use App\Domain\Clients\ClientSearch;
 use App\Domain\Clients\ClientStatus;
 use App\Domain\Clients\ClientVisibility;
+use App\Domain\Saas\EntitlementService;
+use App\Domain\Saas\FeatureRegistry;
 use App\Domain\Scheduling\AppointmentDetailsData;
 use App\Domain\Scheduling\AppointmentSource;
 use App\Domain\Scheduling\AppointmentStatus;
@@ -53,7 +56,7 @@ final class AppointmentController
 
     private const MAX_SLOTS = 60;
 
-    public function create(Request $request, SlotFinder $finder): View
+    public function create(Request $request, SlotFinder $finder, ClientFormOptions $clientForm, EntitlementService $entitlements): View
     {
         $membership = tenant()->membership();
         $uuid = static fn (string $key): ?string => is_string($request->query($key)) && Str::isUuid($request->query($key)) ? strtolower($request->query($key)) : null;
@@ -78,6 +81,10 @@ final class AppointmentController
         $clinician = $clinicians->firstWhere('id', $uuid('clinician'));
 
         $modality = Modality::tryFrom((string) $request->query('modality', ''));
+        // A client whose primary location is "Virtual (telehealth)" books as telehealth unless the booker chose otherwise.
+        if ($modality === null && $client?->is_virtual && ($service === null || $service->allows(Modality::Telehealth))) {
+            $modality = Modality::Telehealth;
+        }
         if ($service !== null && ($modality === null || ! $service->allows($modality)) && count($service->modalities()) === 1) {
             $modality = $service->modalities()[0];
         }
@@ -88,10 +95,21 @@ final class AppointmentController
         $date = $this->date($request->query('date'));
         $time = is_string($request->query('time')) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $request->query('time')) === 1 ? $request->query('time') : null;
 
+        // "Add a new client" without leaving: the clients module's own form (it posts to clients.store, which
+        // comes back here with the new client chosen). Only for members who may create clients, on a plan with clients.
+        $canCreateClient = $client === null
+            && Gate::allows('create', Client::class)
+            && $entitlements->allows(tenant()->organizationOrFail(), FeatureRegistry::CLIENTS);
+        $returning = $request->session()->getOldInput('then') === 'appointment';
+
         return view('app.appointments.create', [
             'client' => $client,
             'matches' => $matches,
             'term' => $term,
+            'newClient' => $canCreateClient ? $clientForm->form(null, $membership) + [
+                'open' => $returning || ($term !== '' && $matches->isEmpty()),
+                'prefill' => $returning ? [] : $this->namePrefill($term),
+            ] : null,
             'services' => $services,
             'service' => $service,
             'clinicians' => $clinicians,
@@ -211,6 +229,23 @@ final class AppointmentController
         )), ['starts_at' => 'time', 'clinician_membership_id' => 'clinician_id']);
 
         return redirect()->route('app.appointments.show', ['appointment' => $replacement])->with('success', 'Appointment rescheduled.');
+    }
+
+    /**
+     * A searched term that reads like a name ("Ama Owusu") becomes the new client's first and last name.
+     *
+     * @return array{first_name?: string, last_name?: string}
+     */
+    private function namePrefill(string $term): array
+    {
+        $words = preg_split('/\s+/u', trim($term), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($words === [] || count($words) > 4 || preg_match('/^[\p{L}][\p{L}\p{M}\'’.\- ]*$/u', trim($term)) !== 1) {
+            return [];
+        }
+
+        $first = mb_substr(array_shift($words), 0, 100);
+
+        return $words === [] ? ['first_name' => $first] : ['first_name' => $first, 'last_name' => mb_substr(implode(' ', $words), 0, 100)];
     }
 
     private function date(mixed $value): ?string

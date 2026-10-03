@@ -44,7 +44,7 @@
   var columns = $('[data-clients-columns]');
   if (toggle && panel) {
     var small = window.matchMedia ? window.matchMedia('(max-width: 69.999rem)') : null;
-    var narrowed = /[?&](status|location|clinician|records|from|to|mine)=/.test(window.location.search);
+    var narrowed = /[?&](status|location|clinician|records|type|billing|from|to|mine)=/.test(window.location.search);
     function set(open) {
       panel.hidden = !open;
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');

@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\App\Clients;
 
+use App\Domain\Clients\BillingType;
+use App\Domain\Clients\ClientContactPoints;
 use App\Domain\Clients\ClientDirectory;
 use App\Domain\Clients\ClientFormOptions;
 use App\Domain\Clients\ClientListFilters;
 use App\Domain\Clients\ClientListRows;
-use App\Domain\Clients\ClientRequirements;
-use App\Domain\Clients\ClientSex;
+use App\Domain\Clients\ClientRelationships;
 use App\Domain\Clients\ClientStatus;
+use App\Domain\Clients\ClientType;
 use App\Domain\Clients\ClientVisibility;
-use App\Domain\Clients\ContactMethod;
 use App\Domain\Clients\CreateClient;
+use App\Domain\Clients\CreateCouple;
 use App\Domain\Clients\UpdateClient;
 use App\Http\Requests\Clients\StoreClientRequest;
 use App\Http\Requests\Clients\UpdateClientRequest;
 use App\Models\Client;
-use App\Support\Regions;
+use App\Models\OrganizationMembership;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -33,7 +35,7 @@ final class ClientController extends ClientProfileController
     /** The comp shows eight rows ("Showing 1–8 of 48 clients"). */
     public const PER_PAGE = 8;
 
-    public function index(Request $request, ClientDirectory $directory, ClientListRows $rows, ClientFormOptions $options): View
+    public function index(Request $request, ClientDirectory $directory, ClientListRows $rows, ClientFormOptions $options, ClientRelationships $relationships): View
     {
         $membership = tenant()->membership();
 
@@ -52,10 +54,15 @@ final class ClientController extends ClientProfileController
             'clients' => $clients,
             'filters' => $filters,
             'appointments' => $rows->appointmentsFor($clients->getCollection(), $membership, $access),
+            'relationships' => $relationships->forPage($clients->getCollection(), $membership),
             'showAppointments' => $access !== null,
             'stats' => $rows->stats($membership, $access),
             'clinicians' => $options->clinicians(),
-            'locations' => $options->locations(),
+            'locations' => [ClientListFilters::VIRTUAL => 'Virtual (telehealth)'] + $options->locations(),
+            'clientTypes' => ClientType::options(),
+            'billingOptions' => BillingType::options(),
+            // The live/demo filter only means something while the organization holds demo data.
+            'hasDemo' => $filters->records !== 'all' || Client::query()->demo()->exists(),
             'canCreate' => Gate::allows('create', Client::class),
             'canBulk' => Gate::allows('clients.edit'),
             'canEdit' => Gate::allows('clients.edit'),
@@ -67,31 +74,71 @@ final class ClientController extends ClientProfileController
 
     public function create(ClientFormOptions $options): View
     {
-        return view('app.clients.create', $this->formData($options, null));
+        return view('app.clients.create', $options->form(null, tenant()->membership()));
     }
 
-    public function store(StoreClientRequest $request, CreateClient $createClient): RedirectResponse
+    /**
+     * A person (CreateClient) or a couple (CreateCouple). From New appointment (`then=appointment`) the new
+     * client is chosen there on the way back, with the step-1 choices it carried (sanitised: ids, a modality,
+     * a date and a time; nothing else survives).
+     */
+    public function store(StoreClientRequest $request, CreateClient $createClient, CreateCouple $createCouple): RedirectResponse
     {
-        $client = $createClient($request->validated(), $request->user());
+        $membership = tenant()->membership();
+        $input = $request->validated();
+        $carried = $request->fromAppointment() ? $request->carried() : [];
 
-        return redirect()->route('app.clients.show', ['client' => $client])
-            ->with('success', 'Client '.$client->formattedNumber().' has been added.');
+        if ($request->fromAppointment() && blank($input['primary_clinician_membership_id'] ?? null)) {
+            // Booking for someone you cannot see is a dead end: a clinician without clients.view_all sees their own clients.
+            $input['primary_clinician_membership_id'] = $this->defaultClinician($carried['clinician'] ?? null, $membership);
+        }
+
+        $client = $request->clientType() === ClientType::Couple
+            ? $createCouple($input, $request->user())
+            : $createClient($input, $request->user());
+
+        if (! $request->fromAppointment()) {
+            return redirect()->route('app.clients.show', ['client' => $client])
+                ->with('success', 'Client '.$client->formattedNumber().' has been added.');
+        }
+
+        if (! ClientVisibility::allows($client, $membership)) {
+            return redirect()->route('app.appointments.create', $carried)->with('error',
+                'Client '.$client->formattedNumber().' has been added, but they are not in your client list, so you cannot book for them here. '
+                .'Ask a colleague who can see all clients to book, or assign them a clinician you work with.');
+        }
+
+        return redirect()->route('app.appointments.create', ['client' => $client->id] + $carried)
+            ->with('success', 'Client '.$client->formattedNumber().' has been added. Now choose the appointment details.');
     }
 
-    public function show(Request $request, Client $client, ClientListRows $rows): View
+    /** New appointment's clinician when it is an active provider, else the creator when they are one. */
+    private function defaultClinician(?string $chosen, OrganizationMembership $membership): ?string
+    {
+        if ($chosen !== null && OrganizationMembership::query()->providers()->whereKey($chosen)->exists()) {
+            return $chosen;
+        }
+
+        return $membership->isActive() && $membership->is_provider ? $membership->id : null;
+    }
+
+    public function show(Request $request, Client $client, ClientListRows $rows, ClientRelationships $relationships, ClientContactPoints $contactPoints): View
     {
         $this->recordView($request, $client, 'overview');
 
-        $client->load(['primaryClinician.user:id,name', 'primaryLocation:id,name', 'contacts']);
+        $client->load(['primaryClinician.user:id,name', 'primaryLocation:id,name', 'contacts', 'contactPoints']);
 
         $membership = tenant()->membership();
         $access = $rows->appointmentAccess($membership);
+        $links = $relationships->all(collect([$client]), $membership)[$client->id];
 
         return view('app.clients.show', $this->header($client, 'overview') + [
             'country' => tenant()->organizationOrFail()->country_code,
             'statusActions' => $this->statusActions($client),
             'appointments' => $rows->appointmentsFor(collect([$client]), $membership, $access)[$client->id],
             'showAppointments' => $access !== null,
+            'points' => $contactPoints->effective($client),
+            'coupleLinks' => array_values(array_filter($links, fn (array $line) => in_array($line['label'], ['Members', 'Couple'], true))),
         ]);
     }
 
@@ -145,7 +192,7 @@ final class ClientController extends ClientProfileController
     {
         $this->recordView($request, $client, 'edit');
 
-        return view('app.clients.edit', $this->formData($options, $client));
+        return view('app.clients.edit', $options->form($client, tenant()->membership()));
     }
 
     public function update(UpdateClientRequest $request, Client $client, UpdateClient $updateClient): RedirectResponse
@@ -154,21 +201,5 @@ final class ClientController extends ClientProfileController
 
         return redirect()->route('app.clients.show', ['client' => $client])
             ->with('success', 'Changes saved.');
-    }
-
-    /** @return array<string, mixed> */
-    private function formData(ClientFormOptions $options, ?Client $client): array
-    {
-        return [
-            'client' => $client,
-            'clinicians' => $options->clinicians($client?->primary_clinician_membership_id),
-            'locations' => $options->locations($client?->primary_location_id),
-            'sexOptions' => ClientSex::options(),
-            'contactMethods' => ContactMethod::options(),
-            'countries' => Regions::countries(),
-            'country' => tenant()->organizationOrFail()->country_code,
-            'dobRequired' => $client === null && app(ClientRequirements::class)->dateOfBirthRequired(tenant()->organizationOrFail()),
-            'contactRequired' => $client === null && app(ClientRequirements::class)->contactRequired(tenant()->organizationOrFail()),
-        ];
     }
 }

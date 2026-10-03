@@ -65,7 +65,7 @@
                 @endif
             @else
                 <x-ui.table label="Clients" class="clients-table-wrap">
-                    <caption class="sr-only">Clients with contact details, status and appointments</caption>
+                    <caption class="sr-only">Clients with contact details, relationships, billing, status and appointments</caption>
                     <thead>
                         <tr>
                             <th scope="col" class="col-check">
@@ -74,7 +74,8 @@
                                 @endif
                             </th>
                             <th scope="col" class="col-client">Client</th>
-                            <th scope="col" class="col-contact">Contact</th>
+                            <th scope="col" class="col-rel">Relationship</th>
+                            <th scope="col" class="col-billing">Billing</th>
                             <th scope="col" class="col-status">Status</th>
                             @if ($showAppointments)
                                 <th scope="col" class="col-next">Next Appointment</th>
@@ -85,7 +86,11 @@
                     </thead>
                     <tbody>
                         @foreach ($clients as $client)
-                            @php($row = $appointments[$client->id] ?? ['next' => null, 'last' => null])
+                            @php
+                                $row = $appointments[$client->id] ?? ['next' => null, 'last' => null];
+                                $rel = $relationships[$client->id] ?? ['lines' => [], 'more' => 0];
+                                $profile = route('app.clients.show', ['client' => $client]);
+                            @endphp
                             <tr>
                                 <td class="col-check">
                                     @if ($canBulk)
@@ -96,26 +101,42 @@
                                     <div class="client-cell">
                                         <x-ui.avatar :name="$client->displayName()" class="client-cell__avatar" :decorative="true" />
                                         <div class="client-cell__text">
-                                            <a href="{{ route('app.clients.show', ['client' => $client]) }}" class="client-cell__name">{{ $client->displayName() }}</a>
-                                            <span class="client-cell__id">{{ $client->formattedNumber() }}@if ($client->isDemo()) <x-ui.badge tone="demo" class="client-cell__demo">Demo</x-ui.badge>@endif</span>
+                                            <span class="client-cell__head">
+                                                <a href="{{ $profile }}" class="client-cell__name">{{ $client->displayName() }}</a>
+                                                @if ($client->client_type->value !== 'adult')<span @class(['type-tag', 'type-tag--couple' => $client->isCouple()])>{{ $client->client_type->label() }}</span>@endif
+                                                @if ($client->isDemo())<x-ui.badge tone="demo" class="client-cell__demo">Demo</x-ui.badge>@endif
+                                            </span>
+                                            <span class="client-cell__line">
+                                                <x-ui.icon name="phone" :size="11" />
+                                                @if (filled($client->phone))<span>{{ \App\Support\PhoneNumbers::display($client->phone, null) }}</span>@else<span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">No phone number</span>@endif
+                                            </span>
+                                            <span class="client-cell__line client-cell__line--mail">
+                                                <x-ui.icon name="mail" :size="12" />
+                                                @if (filled($client->email))<span>{{ $client->email }}</span>@else<span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">No email address</span>@endif
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="col-contact">
-                                    <div class="contact-cell">
-                                        <span class="contact-cell__line">
-                                            <x-ui.icon name="phone" :size="11" />
-                                            @if (filled($client->phone))<span>{{ \App\Support\PhoneNumbers::display($client->phone, null) }}</span>@else<span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">No phone number</span>@endif
-                                        </span>
-                                        <span class="contact-cell__line contact-cell__line--mail">
-                                            <x-ui.icon name="mail" :size="12" />
-                                            @if (filled($client->email))<span class="contact-cell__email">{{ $client->email }}</span>@else<span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">No email address</span>@endif
-                                        </span>
-                                    </div>
+                                <td class="col-rel" data-label="Relationship">
+                                    @if ($rel['lines'] === [])
+                                        <span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">No linked people</span>
+                                    @else
+                                        <ul class="rel-cell">
+                                            @foreach ($rel['lines'] as $line)
+                                                <li class="rel-cell__line"><span class="rel-cell__label">{{ $line['label'] }}:</span>
+                                                    @foreach ($line['items'] as $item)@if ($item['client'])<a href="{{ route('app.clients.show', ['client' => $item['client']]) }}">{{ $item['text'] }}</a>@else<span>{{ $item['text'] }}</span>@endif{{ $loop->last ? '' : ', ' }}@endforeach
+                                                </li>
+                                            @endforeach
+                                            @if ($rel['more'] > 0)
+                                                <li class="rel-cell__more"><a href="{{ $profile }}">+{{ $rel['more'] }} more<span class="sr-only"> for {{ $client->displayName() }}</span></a></li>
+                                            @endif
+                                        </ul>
+                                    @endif
                                 </td>
-                                <td class="col-status"><x-ui.badge :tone="$statusTone[$client->status->value]" class="status-pill">{{ $client->status->label() }}</x-ui.badge></td>
+                                <td class="col-billing" data-label="Billing"><span @class(['billing-pill', 'billing-pill--insurance' => $client->billing_type->value === 'insurance'])>{{ $client->billing_type->label() }}</span></td>
+                                <td class="col-status" data-label="Status"><x-ui.badge :tone="$statusTone[$client->status->value]" class="status-pill">{{ $client->status->label() }}</x-ui.badge></td>
                                 @if ($showAppointments)
-                                    <td class="col-next">
+                                    <td class="col-next" data-label="Next Appointment">
                                         @if ($row['next'])
                                             <span class="next-cell">
                                                 <x-ui.icon name="calendar" :size="14" />
@@ -128,7 +149,7 @@
                                             <span class="muted-dash" aria-hidden="true">—</span><span class="sr-only">None scheduled</span>
                                         @endif
                                     </td>
-                                    <td class="col-last">
+                                    <td class="col-last" data-label="Last Visit">
                                         @if ($row['last'])
                                             {{ fmt()->localDate($row['last']) }}
                                         @else
@@ -138,12 +159,12 @@
                                 @endif
                                 <td class="col-actions">
                                     <x-ui.dropdown icon="ellipsis" :label="'Actions for '.$client->displayName()" align="right" class="row-actions">
-                                        <x-ui.dropdown-item icon="user" :href="route('app.clients.show', ['client' => $client])">View profile</x-ui.dropdown-item>
+                                        <x-ui.dropdown-item icon="user" :href="$profile">View profile</x-ui.dropdown-item>
                                         @if ($canEdit)
                                             <x-ui.dropdown-item icon="pencil" :href="route('app.clients.edit', ['client' => $client])">Edit client</x-ui.dropdown-item>
                                         @endif
                                         @if ($canBook && $client->status->value !== 'archived')
-                                            <x-ui.dropdown-item icon="calendar-plus" :href="route('app.appointments.create', ['client' => $client])">Book appointment</x-ui.dropdown-item>
+                                            <x-ui.dropdown-item icon="calendar-plus" :href="route('app.appointments.create', \App\Http\Controllers\App\Clients\ClientProfileController::bookingQuery($client))">Book appointment</x-ui.dropdown-item>
                                         @endif
                                     </x-ui.dropdown>
                                 </td>
@@ -162,18 +183,24 @@
             <x-ui.field label="Status" name="status">
                 <x-ui.select name="status" :value="$status" placeholder="All Statuses" :options="['active' => 'Active', 'pending' => 'Pending', 'inactive' => 'Inactive', 'archived' => 'Archived']" />
             </x-ui.field>
-            @if (count($locations) > 0)
-                <x-ui.field label="Location" name="location">
-                    <x-ui.select name="location" :value="$filters->location" placeholder="All Locations" :options="$locations" />
-                </x-ui.field>
-            @endif
+            <x-ui.field label="Location" name="location">
+                <x-ui.select name="location" :value="$filters->location" placeholder="All Locations" :options="$locations" />
+            </x-ui.field>
             <x-ui.field label="Clinician" name="clinician">
                 <x-ui.select name="clinician" :value="$filters->clinician" placeholder="All Clinicians" :options="['none' => 'No clinician assigned'] + $clinicians" />
             </x-ui.field>
             {{-- Program: shown when the Programs module exists. --}}
-            <x-ui.field label="Client Type" name="records">
-                <x-ui.select name="records" :value="$filters->records === 'all' ? '' : $filters->records" placeholder="All Client Types" :options="['live' => 'Live records', 'demo' => 'Demo records']" />
+            <x-ui.field label="Client Type" name="type">
+                <x-ui.select name="type" :value="$filters->type" placeholder="All Client Types" :options="$clientTypes" />
             </x-ui.field>
+            <x-ui.field label="Billing" name="billing">
+                <x-ui.select name="billing" :value="$filters->billing" placeholder="All Billing" :options="$billingOptions" />
+            </x-ui.field>
+            @if ($hasDemo)
+                <x-ui.field label="Records" name="records">
+                    <x-ui.select name="records" :value="$filters->records === 'all' ? '' : $filters->records" placeholder="All Records" :options="['live' => 'Live records', 'demo' => 'Demo records']" />
+                </x-ui.field>
+            @endif
             <div class="field">
                 <span class="field__label" id="visit-range-label">Last Appointment</span>
                 <div class="range-inputs" role="group" aria-labelledby="visit-range-label">

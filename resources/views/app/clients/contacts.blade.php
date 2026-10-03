@@ -11,8 +11,8 @@
                     @foreach ($contacts as $contact)
                         <li class="contact-list__item">
                             <div>
-                                <p class="contact-list__name">{{ $contact->name }} @if ($contact->is_emergency_contact)<x-ui.badge tone="danger">Emergency contact</x-ui.badge>@endif</p>
-                                @if (filled($contact->relationship))<p class="contact-list__line">{{ $contact->relationship }}</p>@endif
+                                <p class="contact-list__name">{{ $contact->name }} @if ($contact->isGuardian())<x-ui.badge tone="info">Parent or guardian</x-ui.badge>@endif @if ($contact->is_emergency_contact)<x-ui.badge tone="danger">Emergency contact</x-ui.badge>@endif</p>
+                                @if (filled($contact->relationshipLabel()))<p class="contact-list__line">{{ $contact->relationshipLabel() }}</p>@endif
                                 @if (filled($contact->phone))<p class="contact-list__line"><a href="tel:{{ $contact->phone }}">{{ \App\Support\PhoneNumbers::display($contact->phone, $country) }}</a></p>@endif
                                 @if (filled($contact->email))<p class="contact-list__line"><a href="mailto:{{ $contact->email }}">{{ $contact->email }}</a></p>@endif
                                 @if (filled($contact->notes))<p class="contact-list__line">{{ $contact->notes }}</p>@endif

@@ -2,13 +2,19 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Clients\ClientContactPoints;
 use App\Domain\Clients\ClientStatus;
+use App\Domain\Clients\CoupleMembers;
+use App\Domain\Clients\SaveClientContact;
 use App\Domain\Identity\MembershipStatus;
 use App\Domain\Messaging\ConversationKind;
 use App\Domain\Organization\RefreshOnboardingStatus;
 use App\Domain\Platform\ChangeOrganizationStatus;
 use App\Domain\Platform\CreateOrganization;
+use App\Domain\Platform\OrganizationCounters;
 use App\Domain\Platform\OrganizationStatus;
+use App\Domain\Programs\EnrollmentEventType;
+use App\Domain\Programs\EnrollmentStatus;
 use App\Domain\Scheduling\AppointmentStatus;
 use App\Domain\Scheduling\Modality;
 use App\Domain\Scheduling\ScheduleAppointment;
@@ -16,22 +22,42 @@ use App\Domain\Scheduling\ScheduleAppointmentData;
 use App\Domain\Scheduling\TransitionAppointment;
 use App\Domain\Settings\SettingsService;
 use App\Domain\Shared\RecordEnvironment;
+use App\Domain\Telehealth\AddTranscript;
+use App\Domain\Telehealth\AttachRecording;
+use App\Domain\Telehealth\Daily\FakeDailyClient;
+use App\Domain\Telehealth\EndSession;
+use App\Domain\Telehealth\OpenSession;
+use App\Domain\Telehealth\PrepareRoom;
+use App\Domain\Telehealth\RecordConsent;
+use App\Domain\Telehealth\SaveSessionNotes;
+use App\Domain\Telehealth\TelehealthSettings;
+use App\Domain\Telehealth\TranscriptSource;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\AvailabilityRule;
 use App\Models\Client;
+use App\Models\ClientContactPoint;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
+use App\Models\LevelOfCare;
 use App\Models\Location;
 use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Models\Organization;
 use App\Models\OrganizationMembership;
 use App\Models\Plan;
+use App\Models\Program;
+use App\Models\ProgramEnrollment;
+use App\Models\ProgramEnrollmentEvent;
+use App\Models\ProgramSession;
+use App\Models\ProgramSessionAttendance;
+use App\Models\ProgramStaff;
 use App\Models\Role;
 use App\Models\Service;
+use App\Models\TelehealthSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -269,7 +295,74 @@ class DesignFixtureSeeder extends Seeder
             $client->forceFill(['created_at' => $today->subDays($daysAgo), 'updated_at' => $today->subDays($daysAgo)])->saveQuietly();
         });
 
+        $this->clientModel($clients);
+
         return $clients;
+    }
+
+    /**
+     * The client model beyond the comp (user-requested, spec 10 "Decisions"): every e-mail/phone as a contact
+     * point (a few clients have more than one), about a third on insurance, the telehealth comp's six clients
+     * virtual, a minor with a parent on file, partner and emergency contacts, and one couple linking two
+     * existing clients. The couple record REPLACES an anonymous filler client (CL-0044, not in any program), so every count on the
+     * comps (48 clients, 42 active, ...) stays as it was.
+     *
+     * @param  array<string, Client>  $clients
+     */
+    private function clientModel(array $clients): void
+    {
+        $points = app(ClientContactPoints::class);
+        $extra = [
+            'Emily Johnson' => ['email' => [['emily.johnson@workmail.example.com', 'work']], 'phone' => [['+233302123456', 'home']]],
+            'Michael Brown' => ['phone' => [['+233208765432', 'work']]],
+            'Grace Lee' => ['email' => [['grace.lee@workmail.example.com', 'work']]],
+        ];
+        $virtual = ['Emily Johnson', 'Michael Brown', 'Sophia Davis', 'James Wilson', 'Olivia Martinez', 'Daniel Thomas'];
+
+        foreach (Client::query()->orderBy('client_number')->get() as $client) {
+            $name = $client->first_name.' '.$client->last_name;
+            $current = $points->effective($client);
+            $wanted = [];
+            foreach (['email', 'phone'] as $kind) {
+                $wanted[$kind] = $current[$kind];
+                foreach ($extra[$name][$kind] ?? [] as [$value, $label]) {
+                    $wanted[$kind][] = ['value' => $value, 'label' => $label, 'is_primary' => false];
+                }
+            }
+            $points->sync($client, $wanted, []);
+
+            $client->forceFill([
+                'billing_type' => $client->client_number % 3 === 0 ? 'insurance' : 'self_pay',
+                'is_virtual' => in_array($name, $virtual, true),
+            ])->saveQuietly();
+        }
+
+        // A minor (13 on the comps' "today") with a parent on file who is also the emergency contact.
+        $matthew = $clients['Matthew Scott'];
+        $matthew->forceFill(['client_type' => 'minor', 'date_of_birth' => '2011-06-14'])->saveQuietly();
+        $save = app(SaveClientContact::class);
+        $save($matthew, ['name' => 'Rachel Scott', 'relationship' => 'Mother', 'relationship_type' => 'parent', 'phone' => '+233244567123', 'email' => 'rachel.scott@example.com', 'is_emergency_contact' => true]);
+        $save($clients['Sophia Davis'], ['name' => 'Mark Davis', 'relationship' => 'Brother', 'relationship_type' => 'sibling', 'phone' => '+233241119988', 'is_emergency_contact' => true]);
+        $save($clients['Olivia Martinez'], ['name' => 'Carlos Martinez', 'relationship' => 'Husband', 'relationship_type' => 'spouse', 'phone' => '+233245550001']);
+        $save($clients['James Wilson'], ['name' => 'Linda Wilson', 'relationship' => 'Mother', 'relationship_type' => 'parent', 'phone' => '+233264500011', 'is_emergency_contact' => true]);
+
+        // One couple of two existing clients, in place of filler CL-0044 (same number, status and registration date).
+        $couple = Client::query()->where('client_number', 44)->firstOrFail();
+        $emily = $clients['Emily Johnson'];
+        $michael = $clients['Michael Brown'];
+        $couple->forceFill(CoupleMembers::name($emily->first_name, $emily->last_name, $michael->first_name, $michael->last_name) + [
+            'client_type' => 'couple', 'date_of_birth' => null, 'email' => null, 'phone' => null, 'billing_type' => 'self_pay', 'is_virtual' => true,
+        ])->saveQuietly();
+        ClientContactPoint::query()->where('client_id', $couple->id)->delete();
+        $members = app(CoupleMembers::class);
+        $members->link($couple, $emily);
+        $members->link($couple, $michael);
+
+        // The fixture numbers its clients itself: the next one registered in the app continues after them.
+        DB::table('organization_counters')->updateOrInsert(
+            ['organization_id' => $couple->organization_id, 'key' => OrganizationCounters::CLIENT],
+            ['value' => (int) Client::query()->max('client_number')],
+        );
     }
 
     /**
@@ -537,13 +630,13 @@ class DesignFixtureSeeder extends Seeder
         $people = Client::query()->where('status', ClientStatus::Active->value)->orderBy('client_number')->limit(30)->get();
         $programs = [];
         foreach ($rows as $i => [$name, $color, $icon, $status, $start, $end, $place, $sud, $description, $levels, $count]) {
-            $program = new \App\Models\Program(['name' => $name, 'description' => $description, 'color' => $color, 'icon' => $icon, 'starts_on' => $start, 'ends_on' => $end,
+            $program = new Program(['name' => $name, 'description' => $description, 'color' => $color, 'icon' => $icon, 'starts_on' => $start, 'ends_on' => $end,
                 'location_id' => $place === 'online' ? null : $locations[$place], 'is_online' => $place === 'online']);
             $program->forceFill(['status' => $status, 'is_sud_program' => $sud, 'created_at' => $at('2025-01-02 09:00')->addMinutes($i), 'updated_at' => $at('2025-01-02 09:00')->addMinutes($i)])->save();
 
             $made = [];
             foreach ($levels as $order => $levelName) {
-                $level = new \App\Models\LevelOfCare(['name' => $levelName, 'sort' => $order + 1, 'description' => null, 'eligibility' => null]);
+                $level = new LevelOfCare(['name' => $levelName, 'sort' => $order + 1, 'description' => null, 'eligibility' => null]);
                 $level->forceFill(['program_id' => $program->id, 'is_active' => true])->save();
                 $made[] = $level;
             }
@@ -563,7 +656,7 @@ class DesignFixtureSeeder extends Seeder
         $staff = OrganizationMembership::query()->with('user:id,name')->get()->keyBy(fn ($m) => $m->user->name);
         foreach ([['Mental Health Wellness Program', 'James Allen', 'director'], ['Mental Health Wellness Program', 'Lisa Morgan', 'clinician'],
             ['Substance Use Recovery Program', 'Sarah Carter', 'director'], ['Teen Empowerment Program', 'Emily Johnson', 'coordinator']] as [$programName, $person, $role]) {
-            (new \App\Models\ProgramStaff)->forceFill(['program_id' => $programs[$programName]->id, 'membership_id' => $staff[$person]->id, 'role' => $role])->save();
+            (new ProgramStaff)->forceFill(['program_id' => $programs[$programName]->id, 'membership_id' => $staff[$person]->id, 'role' => $role])->save();
         }
 
         $sessions = [
@@ -574,15 +667,15 @@ class DesignFixtureSeeder extends Seeder
             ['Life Skills Workshop', 'Teen Empowerment Program', '2025-04-22 14:00', '2025-04-22 16:00', 'Accra', 'Emily Johnson'],
         ];
         foreach ($sessions as [$title, $programName, $from, $to, $place, $facilitator]) {
-            $session = new \App\Models\ProgramSession;
+            $session = new ProgramSession;
             $session->forceFill([
                 'program_id' => $programs[$programName]->id, 'title' => $title, 'starts_at' => $at($from), 'ends_at' => $at($to), 'timezone' => self::TZ,
                 'location_id' => $place === 'online' ? null : $locations[$place], 'is_online' => $place === 'online', 'facilitator_membership_id' => $staff[$facilitator]->id,
             ])->save();
 
             if ($at($from)->isPast()) {
-                foreach (\App\Models\ProgramEnrollment::query()->where('program_id', $session->program_id)->where('status', 'active')->get() as $n => $enrollment) {
-                    (new \App\Models\ProgramSessionAttendance)->forceFill([
+                foreach (ProgramEnrollment::query()->where('program_id', $session->program_id)->where('status', 'active')->get() as $n => $enrollment) {
+                    (new ProgramSessionAttendance)->forceFill([
                         'program_id' => $session->program_id, 'session_id' => $session->id, 'enrollment_id' => $enrollment->id,
                         'record_environment' => $enrollment->record_environment, 'status' => ['present', 'present', 'present', 'absent', 'excused'][$n % 5],
                     ])->save();
@@ -591,20 +684,20 @@ class DesignFixtureSeeder extends Seeder
         }
     }
 
-    private function enroll(\App\Models\Program $program, Client $client, ?\App\Models\LevelOfCare $level, CarbonImmutable $admitted, string $status, ?CarbonImmutable $ended = null): void
+    private function enroll(Program $program, Client $client, ?LevelOfCare $level, CarbonImmutable $admitted, string $status, ?CarbonImmutable $ended = null): void
     {
-        $enrollment = new \App\Models\ProgramEnrollment;
+        $enrollment = new ProgramEnrollment;
         $enrollment->forceFill([
             'record_environment' => $client->record_environment, 'client_id' => $client->id, 'program_id' => $program->id,
             'current_level_id' => $level?->id, 'status' => $status, 'admitted_at' => $admitted, 'ended_at' => $ended,
         ])->save();
 
-        $events = [[\App\Domain\Programs\EnrollmentEventType::Admitted, null, \App\Domain\Programs\EnrollmentStatus::Active, $admitted]];
+        $events = [[EnrollmentEventType::Admitted, null, EnrollmentStatus::Active, $admitted]];
         if ($ended !== null) {
-            $events[] = [\App\Domain\Programs\EnrollmentEventType::Completed, \App\Domain\Programs\EnrollmentStatus::Active, \App\Domain\Programs\EnrollmentStatus::Completed, $ended];
+            $events[] = [EnrollmentEventType::Completed, EnrollmentStatus::Active, EnrollmentStatus::Completed, $ended];
         }
         foreach ($events as [$type, $from, $to, $when]) {
-            (new \App\Models\ProgramEnrollmentEvent)->forceFill([
+            (new ProgramEnrollmentEvent)->forceFill([
                 'organization_id' => $enrollment->organization_id, 'record_environment' => $enrollment->record_environment, 'enrollment_id' => $enrollment->id,
                 'event_type' => $type, 'from_status' => $from, 'to_status' => $to, 'to_level_id' => $level?->id, 'occurred_at' => $when,
             ])->save();
@@ -644,7 +737,7 @@ class DesignFixtureSeeder extends Seeder
                 client: $clients[$client], service: $services[$service], clinician: $clinicians[$clinician],
                 modality: Modality::Telehealth, startsAt: CarbonImmutable::parse("{$date} {$time}", self::TZ), actor: $actor,
             ));
-            $session = \App\Models\TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
+            $session = TelehealthSession::query()->where('appointment_id', $appointment->id)->firstOrFail();
             if ($client !== 'Emily Johnson') {
                 $this->fakeRoom($session, "wnfixture{$meeting}");
             }
@@ -661,23 +754,23 @@ class DesignFixtureSeeder extends Seeder
         $previousNow = CarbonImmutable::getTestNow();
         try {
             CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-04-28 10:00:00', 'UTC'));
-            app(\App\Domain\Telehealth\OpenSession::class)($emily, $actor);
-            app(\App\Domain\Telehealth\RecordConsent::class)($emily, true, $actor);
+            app(OpenSession::class)($emily, $actor);
+            app(RecordConsent::class)($emily, true, $actor);
             CarbonImmutable::setTestNow(CarbonImmutable::parse('2025-04-28 11:00:00', 'UTC'));
-            app(\App\Domain\Telehealth\EndSession::class)($emily, $actor);
-            app(\App\Domain\Telehealth\SaveSessionNotes::class)($emily, 'Client discussed recent stressors and coping strategies. Reported improved mood compared to last session. Discussed homework and follow-up plan.', $actor);
+            app(EndSession::class)($emily, $actor);
+            app(SaveSessionNotes::class)($emily, 'Client discussed recent stressors and coping strategies. Reported improved mood compared to last session. Discussed homework and follow-up plan.', $actor);
 
             $wav = tempnam(sys_get_temp_dir(), 'wav');
             $samples = str_repeat("\x00\x00", 2000);
             file_put_contents($wav, 'RIFF'.pack('V', 36 + strlen($samples)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, 8000, 16000, 2, 16).'data'.pack('V', strlen($samples)).$samples);
-            $recording = app(\App\Domain\Telehealth\AttachRecording::class)($emily, new \Illuminate\Http\UploadedFile($wav, 'session.wav', 'audio/wav', null, true), 3600, $actor);
+            $recording = app(AttachRecording::class)($emily, new UploadedFile($wav, 'session.wav', 'audio/wav', null, true), 3600, $actor);
             @unlink($wav);
             $recording->forceFill(['size_bytes' => 26004684])->save();
 
-            app(\App\Domain\Telehealth\AddTranscript::class)(
+            app(AddTranscript::class)(
                 $emily,
                 "Clinician: How have you been since our last session?\nClient: A little better. The breathing exercises helped when work got stressful.\nClinician: That is good to hear. Let's plan some homework for the week ahead.",
-                \App\Domain\Telehealth\TranscriptSource::Ai,
+                TranscriptSource::Ai,
                 $recording,
                 $actor,
             );
@@ -690,14 +783,14 @@ class DesignFixtureSeeder extends Seeder
     }
 
     /** A simulated Daily room (FakeDailyClient's address shape) with the window PrepareRoom would ask for — no network. */
-    private function fakeRoom(\App\Models\TelehealthSession $session, string $name): void
+    private function fakeRoom(TelehealthSession $session, string $name): void
     {
-        [$notBefore, $expiresAt] = \App\Domain\Telehealth\PrepareRoom::window(
-            $session->starts_at, $session->ends_at, app(\App\Domain\Telehealth\TelehealthSettings::class)->joinEarlyMinutes($session->organization_id),
+        [$notBefore, $expiresAt] = PrepareRoom::window(
+            $session->starts_at, $session->ends_at, app(TelehealthSettings::class)->joinEarlyMinutes($session->organization_id),
         );
         $session->forceFill([
             'provider_room_name' => $name,
-            'join_url' => \App\Domain\Telehealth\Daily\FakeDailyClient::DOMAIN.'/'.$name,
+            'join_url' => FakeDailyClient::DOMAIN.'/'.$name,
             'provider_room_nbf' => $notBefore,
             'provider_room_exp' => $expiresAt,
         ])->save();

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Domain\Clients\BillingType;
 use App\Domain\Clients\ClientStatus;
+use App\Domain\Clients\ClientType;
 use App\Domain\Shared\RecordEnvironment;
 use App\Domain\Tenancy\BelongsToOrganization;
 use Database\Factories\ClientFactory;
@@ -15,8 +17,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * The person receiving care. record_environment, client_number and status are
- * written by the Clients domain actions only (not mass-assignable).
+ * The person (or couple) receiving care. record_environment, client_number, status, client_type,
+ * billing_type and is_virtual are written by the Clients domain actions only (not mass-assignable);
+ * email / phone mirror the primary contact point of each kind (ClientContactPoints keeps them in sync).
  */
 #[Fillable([
     'first_name', 'middle_name', 'last_name', 'preferred_name', 'date_of_birth', 'sex',
@@ -34,6 +37,9 @@ class Client extends Model
         return [
             'record_environment' => RecordEnvironment::class,
             'status' => ClientStatus::class,
+            'client_type' => ClientType::class,
+            'billing_type' => BillingType::class,
+            'is_virtual' => 'boolean',
             'client_number' => 'integer',
             'date_of_birth' => 'immutable_date',
             'archived_at' => 'immutable_datetime',
@@ -58,6 +64,24 @@ class Client extends Model
         return $this->hasMany(ClientContact::class)->orderBy('sort')->orderBy('name');
     }
 
+    /** @return HasMany<ClientContactPoint, $this> every e-mail and phone, primary first */
+    public function contactPoints(): HasMany
+    {
+        return $this->hasMany(ClientContactPoint::class)->orderBy('kind')->orderByDesc('is_primary')->orderBy('sort');
+    }
+
+    /** @return HasMany<ClientCoupleMember, $this> for a couple: its two member links */
+    public function memberLinks(): HasMany
+    {
+        return $this->hasMany(ClientCoupleMember::class, 'couple_client_id');
+    }
+
+    /** @return HasMany<ClientCoupleMember, $this> for an individual: the couples they belong to */
+    public function coupleLinks(): HasMany
+    {
+        return $this->hasMany(ClientCoupleMember::class, 'member_client_id');
+    }
+
     /** @return HasMany<Appointment, $this> */
     public function appointments(): HasMany
     {
@@ -73,6 +97,16 @@ class Client extends Model
     public function isDemo(): bool
     {
         return $this->record_environment === RecordEnvironment::Demo;
+    }
+
+    public function isCouple(): bool
+    {
+        return $this->client_type === ClientType::Couple;
+    }
+
+    public function isMinor(): bool
+    {
+        return $this->client_type === ClientType::Minor;
     }
 
     public function fullName(): string

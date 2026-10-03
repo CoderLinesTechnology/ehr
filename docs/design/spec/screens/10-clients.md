@@ -105,3 +105,20 @@ Select placeholders (exact): Status → "All Statuses"; Location → "All Locati
 - Stat-card unequal widths; avatar gradient exact stops; pill/pagination radii ±2.
 - Text sizes ±0.5px (table text is 10–12px: smallest in any comp; do not go below 11px for accessibility — if raised, keep column widths per this spec).
 - The "Filters" title glitch (see §5).
+
+## Decisions — user-requested changes vs the comp (2026-10-03)
+
+The comp is still the reference for typography, row height, spacing, colours, the stat cards and the filters panel.
+These changes were asked for by the product owner and win over the comp:
+
+| Area | Comp | Now |
+|---|---|---|
+| Columns | Client (+ ID) · Contact · Status · Next Appointment · Last Visit · Actions | Client (avatar, name, a small **Minor** / **Couple** tag, then the PRIMARY phone and email lines — the old Contact column merged in) · **Relationship** · **Billing** · Status · Next Appointment · Last Visit · Actions |
+| Client number | Under the name (`CL-0012`) | **Not in the table.** Still searchable ("CL-12", "0012") and shown on the profile and edit page |
+| Relationship | — | Up to 3 lines (11px/15px): `Clinician: Dr. Sarah Carter`, `Members: A, B` (a couple) / `Couple: Emily & Michael Johnson` (a member), `Guardian: …`, `Partner: …`, `Emergency: …`; client names link to their profile; more → `+N more` (links to the profile). Linked clients the viewer may not see are left out |
+| Billing | — | Pill, same geometry as the status pill: **Insurance** (`#efeafe` / `#5b3fc4`) or **Self pay** (`#eef2f7` / `#4a5f80`) |
+| Column widths | — | check 4.6% · client 24% · relationship 26% · billing 8.8% · status 8.6% · next 12.2% · last 9.4% · actions 6.4% |
+| Filters | Client Type = (stand-in) live/demo | **Client Type** = Adult / Minor / Couple; **Billing** (Insurance / Self pay) added below it; **Location** gains "Virtual (telehealth)" first; the live/demo stand-in moved to a **Records** select shown only while the organization has demo data |
+| Phone (< 40rem) | — (table scrolled sideways) | Each row is a card: tick · client · actions, then Relationship, then Billing \| Status, then Next Appointment \| Last Visit, each value under its column name; no horizontal scroll |
+
+Rows stay 62px with three client lines (name 16 + two 16px lines); the Relationship cell fits three lines plus "+N more" at 15px.

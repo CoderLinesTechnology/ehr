@@ -15,9 +15,14 @@ use Illuminate\Support\Str;
 
 /**
  * Turns submitted client details into what is stored: only mass-assignable
- * keys, text trimmed (blank = NULL), the phone number in E.164, the e-mail
- * lower-cased, and the values the schema cannot express checked (date of
- * birth not in the future, the clinician an active provider, ...).
+ * keys, text trimmed (blank = NULL), and the values the schema cannot express
+ * checked (date of birth not in the future, the clinician an active provider,
+ * ...). E-mail addresses and phone numbers are ClientContactPoints' job (the
+ * primary of each kind becomes clients.email / clients.phone there).
+ *
+ * Besides the mass-assignable keys it may return two domain-written ones:
+ * `billing_type` and `is_virtual`. "Primary location" accepts a location id
+ * or VIRTUAL ("Virtual (telehealth)": is_virtual, no location).
  *
  * Shared by CreateClient and UpdateClient so both hold the same line. The
  * form request already reports problems per field; this is the guard for
@@ -25,6 +30,12 @@ use Illuminate\Support\Str;
  */
 final class ClientAttributes
 {
+    /** The "Primary location" value meaning "Virtual (telehealth)". */
+    public const VIRTUAL = 'virtual';
+
+    /** Keys returned besides the mass-assignable ones; written by the actions with forceFill. */
+    public const DOMAIN_KEYS = ['billing_type', 'is_virtual'];
+
     /**
      * @param  array<string, mixed>  $input
      * @param  Client|null  $current  the client being edited: values it already holds stay acceptable
@@ -35,22 +46,20 @@ final class ClientAttributes
      */
     public function __invoke(array $input, Organization $organization, ?Client $current = null): array
     {
-        $data = Arr::only($input, (new Client)->getFillable());
+        $data = Arr::except(Arr::only($input, (new Client)->getFillable()), ['email', 'phone']);
 
         foreach ($data as $key => $value) {
             $data[$key] = is_string($value) ? (trim($value) === '' ? null : trim($value)) : $value;
         }
 
-        if (array_key_exists('email', $data) && $data['email'] !== null) {
-            $data['email'] = mb_strtolower($data['email']);
-            if (filter_var($data['email'], FILTER_VALIDATE_EMAIL) === false) {
-                throw new DomainException('Enter a valid email address.', 'invalid_email', 'email');
-            }
-        }
+        $this->location($data, $input);
 
-        if (array_key_exists('phone', $data) && $data['phone'] !== null) {
-            $data['phone'] = PhoneNumbers::normalize($data['phone'], $organization->country_code)
-                ?? throw new DomainException(self::phoneMessage($organization), 'invalid_phone', 'phone');
+        if (array_key_exists('billing_type', $input)) {
+            $billing = is_string($input['billing_type']) && trim($input['billing_type']) !== '' ? trim($input['billing_type']) : BillingType::SelfPay->value;
+            if (! in_array($billing, BillingType::values(), true)) {
+                throw new DomainException('Choose Self pay or Insurance.', 'invalid_billing_type', 'billing_type');
+            }
+            $data['billing_type'] = $billing;
         }
 
         if (array_key_exists('date_of_birth', $data) && $data['date_of_birth'] !== null) {
@@ -75,6 +84,36 @@ final class ClientAttributes
         $this->assertLocation($data, $current);
 
         return $data;
+    }
+
+    /**
+     * "Primary location": a location id, VIRTUAL, or nothing. An explicit `is_virtual` (without a location
+     * field) also works.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $input
+     */
+    private function location(array &$data, array $input): void
+    {
+        if (($data['primary_location_id'] ?? null) === self::VIRTUAL) {
+            $data['primary_location_id'] = null;
+            $data['is_virtual'] = true;
+
+            return;
+        }
+
+        if (array_key_exists('primary_location_id', $data)) {
+            $data['is_virtual'] = false;
+
+            return;
+        }
+
+        if (array_key_exists('is_virtual', $input)) {
+            $data['is_virtual'] = filter_var($input['is_virtual'], FILTER_VALIDATE_BOOL);
+            if ($data['is_virtual']) {
+                $data['primary_location_id'] = null;
+            }
+        }
     }
 
     public static function phoneMessage(Organization $organization): string

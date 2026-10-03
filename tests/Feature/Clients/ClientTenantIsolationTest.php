@@ -156,7 +156,7 @@ class ClientTenantIsolationTest extends ClientsTestCase
     #[Test]
     public function the_selects_offer_only_this_organizations_clinicians_and_locations(): void
     {
-        $options = new ClientFormOptions;
+        $options = app(ClientFormOptions::class);
 
         $clinicians = $this->inOrganizationA(fn () => $options->clinicians($this->bClinician->id));   // even when asked to include one of theirs
         $this->assertArrayNotHasKey($this->bClinician->id, $clinicians);

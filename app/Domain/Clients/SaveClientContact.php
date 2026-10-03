@@ -17,12 +17,15 @@ use Illuminate\Support\Facades\DB;
  * stored in E.164, e-mail lower-cased; a client holds a bounded number of
  * contacts (the list is rendered whole). Audited; the free-text notes never
  * enter the audit trail.
+ *
+ * A minor must keep a reachable parent or guardian (ClientGuardians): a change
+ * that would leave them without one is refused.
  */
 final class SaveClientContact
 {
     public const MAX_PER_CLIENT = 25;
 
-    private const FIELDS = ['name', 'relationship', 'phone', 'email', 'is_emergency_contact', 'notes'];
+    private const FIELDS = ['name', 'relationship', 'relationship_type', 'phone', 'email', 'is_emergency_contact', 'notes'];
 
     private const UNAUDITED_CONTENT = ['notes'];
 
@@ -80,6 +83,10 @@ final class SaveClientContact
             $data['is_emergency_contact'] = filter_var($data['is_emergency_contact'], FILTER_VALIDATE_BOOL);
         }
 
+        if (($data['relationship_type'] ?? null) !== null && ! in_array($data['relationship_type'], RelationshipType::values(), true)) {
+            throw new DomainException('Choose a relationship from the list.', 'invalid_relationship_type', 'relationship_type');
+        }
+
         return $data;
     }
 
@@ -114,13 +121,21 @@ final class SaveClientContact
     /** @param array<string, mixed> $data */
     private function update(Client $client, ClientContact $contact, array $data): ClientContact
     {
+        /** @var Client $owner the client row is the mutex for "keeps a guardian" */
+        $owner = Client::query()->lockForUpdate()->findOrFail($client->id);
         /** @var ClientContact $locked */
         $locked = ClientContact::query()->lockForUpdate()->findOrFail($contact->id);
+        $wasGuardian = $locked->isGuardian() && (filled($locked->phone) || filled($locked->email));
         $locked->fill($data);
 
         $changed = array_keys($locked->getDirty());
         if ($changed === []) {
             return $contact;
+        }
+
+        $isGuardian = $locked->isGuardian() && (filled($locked->phone) || filled($locked->email));
+        if ($owner->isMinor() && $wasGuardian && ! $isGuardian && ! ClientGuardians::has($owner, $locked->id)) {
+            throw ClientGuardians::missing('relationship_type');
         }
 
         $metadata = ['client_id' => $client->id, 'fields' => $changed];
