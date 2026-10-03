@@ -1,0 +1,25 @@
+# 09 Resources — measured spec
+
+Comp `docs/design/comps/09-resources.png`, 1536x1024. Boxes `x,y,w,h`. Shell → `../app-shell.md` (this comp's sidebar edge x271, topbar 73). The comp's content box is 296–1513 (the other comps' is 302–1507): the screen wrapper claims the difference with `margin-inline:-6px` (≥70rem). Font sizes are Inter **width-fits** of the comp's ink (the comp's face is ~10% narrower than Inter at equal cap height); sizes under 11px (list description 10.8, list meta 9.7, card meta 10.6) follow the comp. Colours are medians of flat regions. CSS: `public/css/screens/resources.css`.
+
+## Layout
+Header tile 60px circle (300,100) `#e8f2fe`, Lucide `book-open` 28px `#0048d3`-family; title "Resources" x379 cap-top y109, 22.6px/600 `#01092e` (ink 114x19); subtitle 12.8px `#4d6391`-family at y141. Panel A (tabs + featured) 296,177,1217x283 (to y459): white, 1px `#edf2f9`, radius 12. Panel B row y475–1000: Latest card 296,475,776x525; rail card 1083,475,430x525 (gap 12). Panel gap 16.
+
+## Panel A
+* **Tabs** (All, Guides, Forms, Documents, Videos, FAQs): pills h30 at y192 (x310.5 start, gap 10–11), widths 58/74/70/99/74/65 (text pad ≈18, "All" 21). Active: gradient `#66aafb`→`#5ca2f8`→`#67a9fb`, white 12px/500. Inactive: bg `#f8fafd`, text `#1d2f53` 12px/500, no border. Text ink: All 332, Guides 396 (38w), Forms 481 (34), Documents 562 (64), Videos 672 (38), FAQs 757 (28).
+* **Search** 1183,190,314x36: bg `#f6f9fd`, 1px `#f0f5fc`, radius 10; Lucide `search` 15px `#576990` at x1198; placeholder "Search resources..." x1227, 11.6px `#5a6d8f`.
+* **Featured cards** (y249–444, h195, gap 18): measured x 311/607/905/1209, widths 278/281/285/288 (grid `278fr 281fr 285fr 288fr`). White, 1px `#f1f5fb`, radius 12, shadow `0 2px 7px rgba(30,70,140,.06)`. Tile circle 46 at (card.x+17, card.y+15). Title x card.x+20, ink-top y324, 13.7px/500 `#04102c`; description 12px/400 `#5d7096`, line pitch 20, max-width ≈200 (2 lines); meta row centre y≈412: Lucide `file-text` 16px `#5a6f93` at x334, text "PDF • 5 min read" 10.6px/400 `#6a7c9d` at x360; arrow Lucide `arrow-right` ink 12x11 `#1060ef`, right edge 568 (card right 589).
+* Tile colours (bg / icon): blue guide `#e1eefe`/`#0a55e8` `file-text`; green form `#e6f8f4`/`#0a6e58` `clipboard-list`; purple video `#eae4fe`/`#4a2edb` `square-play`; orange document `#fef1e8`/`#c43c04` `file-text`; (FAQ, not in comp) teal `#dff5f6`/`#0b7f86` `circle-help`. Icon 22px stroke 2.1.
+
+## Latest Resources card
+Title "Latest Resources" x317, ink y496, 15.3px/600 `#01062a`; "View all →" ink x988–1045, y498, 11.1px/500 `#115aed` (arrow 14px). List box 311,527,746x449 (to 1057/976), 1px `#f1f5fb`, radius 12, 6 rows pitch ≈74.6, separators `#f1f5fa` from x392 to the box's right edge. Row: tile 46 circle at (325, row+14); title x392, ink-top row+20, 12px/500 `#030e38`; description ink-top row+43, 10.8px/400 `#5d7096`; meta column x867: line 1 type icon 12px `#a9b8ce` + label (`#48597f`, 9.7px) ink-top row+22, line 2 clock icon + "5 min read"/"10 min" (`#8899b2`) row+42; arrow `arrow-right` ink 9–11px `#616f95` at x1033, centred.
+
+## Rail card (1083,475,430x525; padding 14 left/16 right inner boxes x1097–1497)
+* **Quick Links**: Lucide `link` 22px `#354b74` x1110, title x1143 14.1px/600 `#00021f`, ink y496. List box 1097,527,400x174 (1px `#f4f7fc`, r12), 4 items pitch 41.5 (centres 551/592/634/675): icon 22px `#354974` x1111 (≈3px above label centre), label x1152 12.5px/400 `#091038`, chevron `chevron-right` 16px `#5e7296` x1476. Items: My Appointments (`calendar`), My Forms (`clipboard-list`), My Documents (`file`), Contact Support (`headset`).
+* **Need Help?** box 1097,717,400x120: bg `#f3f8fe`, 1px `#e8f1fc`, r12. Brand leaf mark 30px at (1124,747); "Need Help?" x1185 ink y733 14.5px/600 `#01042b`; two lines 12.5px/400 `#556a8c` ink y756, 773 (pitch 17); button 1185,796,121x26 bg `#ecf5fe` 1px `#d3e6fb` r7, "Contact Support" 12.3px/500 `#0950d4` (ink x1198, 94w).
+* **Upcoming Appointments** box 1097,853,400x132 (1px `#f2f6fb`, r12): `calendar` 22px `#1257d6`-family x1111, title x1145 14.6px/600 blue, ink y876; "View all →" right (ink 1426–1482). Item: date badge 1111,912,48x52 bg `#f5f8fd` r12 ("APR" 11px/500 `#172d62`, "28" 20px/600 `#000125`); title x1177 ink y913 11.7px/600 `#010a39`; "With …" ink y934 12px `#4c6589`; clock 14px + "10:00 AM – 11:00 AM" ink y955 12px `#596e95`; chevron x1474 `#8a9ebe`.
+
+## Decisions
+* Quick Links shows only links to screens that exist and the member may open (My Forms/My Documents appear when those modules exist; Contact Support = `mailto:` the platform support address when set). The comp's four links therefore need those routes; verified with temporary stubs.
+* The comp has no manager controls: members with `resources.manage` get small text links ("Drafts and archived", "Add resource") beside "View all" in the Latest card header. Viewers see exactly the comp.
+* Comp glitches not reproduced: garbled meta glyphs (→ plain Lucide), "Dr." prefix on the client name (data), stray dot at the first row tile.

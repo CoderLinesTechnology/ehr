@@ -16,6 +16,7 @@ class SettingsAccessTest extends SettingsHttpTestCase
     public static function routes(): array
     {
         $o = 'organization.settings.manage';
+        $staff = \App\Domain\Identity\RoleTemplates::organization()['staff']['permissions'];
 
         return [
             'organization page' => ['GET', 'organization', $o, []],
@@ -35,11 +36,13 @@ class SettingsAccessTest extends SettingsHttpTestCase
             'service status' => ['PATCH', 'services/{service}/status', 'services.manage', []],
             'team list' => ['GET', 'team', 'team.view', []],
             'team invite' => ['POST', 'team/invitations', 'team.manage', ['team.view']],
-            'team resend' => ['POST', 'team/invitations/{invitation}/resend', 'team.manage', ['team.view', 'appointments.view']],
-            'team revoke' => ['DELETE', 'team/invitations/{invitation}', 'team.manage', ['team.view', 'appointments.view']],
+            // Managing someone requires holding everything their role grants (escalation guard),
+            // so the actor also holds the whole "staff" template the target and invitation carry.
+            'team resend' => ['POST', 'team/invitations/{invitation}/resend', 'team.manage', $staff],
+            'team revoke' => ['DELETE', 'team/invitations/{invitation}', 'team.manage', $staff],
             'member edit page' => ['GET', 'team/{member}/edit', 'team.view', []],
             'member update' => ['PUT', 'team/{member}', 'team.manage', ['team.view']],
-            'member status' => ['PATCH', 'team/{member}/status', 'team.manage', ['team.view', 'appointments.view']],
+            'member status' => ['PATCH', 'team/{member}/status', 'team.manage', $staff],
             'roles list' => ['GET', 'roles', 'roles.manage', []],
             'role create form' => ['GET', 'roles/create', 'roles.manage', []],
             'role store' => ['POST', 'roles', 'roles.manage', []],

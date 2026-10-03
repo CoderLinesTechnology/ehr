@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsurePlatformAccess;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TouchLastSeen;
 use App\Http\Middleware\ThrottleAuthEndpoints;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureUserIsActive::class,
             EnforceSessionLifetime::class,
             ThrottleAuthEndpoints::class,
+            TouchLastSeen::class,
         ]);
 
         // Links in emails (password reset, invitations) are built from the

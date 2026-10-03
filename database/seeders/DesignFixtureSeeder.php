@@ -4,6 +4,9 @@ namespace Database\Seeders;
 
 use App\Domain\Clients\ClientStatus;
 use App\Domain\Identity\MembershipStatus;
+use App\Domain\Messaging\ConversationKind;
+use App\Domain\Organization\RefreshOnboardingStatus;
+use App\Domain\Platform\ChangeOrganizationStatus;
 use App\Domain\Platform\CreateOrganization;
 use App\Domain\Platform\OrganizationStatus;
 use App\Domain\Scheduling\AppointmentStatus;
@@ -12,9 +15,16 @@ use App\Domain\Scheduling\ScheduleAppointment;
 use App\Domain\Scheduling\ScheduleAppointmentData;
 use App\Domain\Scheduling\TransitionAppointment;
 use App\Domain\Settings\SettingsService;
+use App\Domain\Shared\RecordEnvironment;
 use App\Domain\Tenancy\TenantContext;
+use App\Models\AvailabilityRule;
 use App\Models\Client;
+use App\Models\Conversation;
+use App\Models\ConversationParticipant;
 use App\Models\Location;
+use App\Models\Message;
+use App\Models\MessageReaction;
+use App\Models\Organization;
 use App\Models\OrganizationMembership;
 use App\Models\Plan;
 use App\Models\Role;
@@ -22,7 +32,10 @@ use App\Models\Service;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -115,7 +128,7 @@ class DesignFixtureSeeder extends Seeder
             // (no onboarding checklist).
             foreach ($clinicians as $index => $membership) {
                 foreach ([1, 2, 3, 4, 5] as $weekday) {
-                    $rule = new \App\Models\AvailabilityRule([
+                    $rule = new AvailabilityRule([
                         'membership_id' => $membership->id,
                         'location_id' => $locations[$index === 'james' ? 'Kumasi' : 'Accra']->id,
                         'weekday' => $weekday, 'start_time' => '08:00', 'end_time' => '18:00',
@@ -124,13 +137,64 @@ class DesignFixtureSeeder extends Seeder
                     $rule->save();
                 }
             }
-            app(\App\Domain\Organization\RefreshOnboardingStatus::class)($organization);
+            app(RefreshOnboardingStatus::class)($organization);
 
             $clients = $this->clients($owner);
             $this->appointments($clients, $services, $clinicians, $locations, $sarah);
+            $this->conversations($organization, $owner, $clinicians, $clients, $password);
         });
 
+        $tenant->runAs($created->organization, fn () => $this->resources($created->organization));
+        app(SettingsService::class)->setPlatform(['platform.support_email' => 'support@wellnest.org'], null);
+
+        $this->platformConsole($password, $sarah);
+
         $this->command?->info('Design fixture ready: sarah@wellnest.test / password-1234 — organization "wellnest". Serve with APP_FAKE_NOW="2025-04-28 08:30:00".');
+    }
+
+    /**
+     * Super Admin console fixture: a super admin and a support user (fixed TOTP secret JBSWY3DPEHPK3PXP,
+     * so a screenshot tool can sign in) and a few more organizations so the lists are not trivial.
+     */
+    private function platformConsole(string $password, User $sarah): void
+    {
+        $admin = $this->user('Naa Adjei', 'admin@wellnest.test', $password);
+        $support = $this->user('Kofi Mensah', 'support@wellnest.test', $password);
+        foreach ([[$admin, 'super_admin'], [$support, 'platform_support']] as [$user, $key]) {
+            $user->forceFill([
+                'two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'),
+                'two_factor_recovery_codes' => encrypt(json_encode(['fixture-aaaaa', 'fixture-bbbbb'])),
+                'two_factor_confirmed_at' => now(),
+                'last_login_at' => now()->subHours(3),
+            ])->save();
+            $user->platformRoles()->attach(Role::query()->platform()->where('key', $key)->value('id'), [
+                'scope' => 'platform', 'granted_at' => now()->subDays(20), 'granted_by_user_id' => $key === 'super_admin' ? null : $admin->id,
+            ]);
+        }
+
+        $create = app(CreateOrganization::class);
+        foreach ([
+            ['Kumasi Mind Clinic', 'kumasi-mind', 'GH', 'Africa/Accra', 'GHS', 'hello@kumasimind.test', 'Efua Boateng', 'efua@kumasimind.test', 'starter', OrganizationStatus::Trial],
+            ['Lagos Family Practice', 'lagos-family', 'NG', 'Africa/Lagos', 'NGN', 'care@lagosfamily.test', 'Tunde Bakare', 'tunde@lagosfamily.test', 'professional', OrganizationStatus::Active],
+            ['Nairobi Wellness Hub', 'nairobi-wellness', 'KE', 'Africa/Nairobi', 'KES', 'info@nairobiwellness.test', 'Wanjiru Kamau', 'wanjiru@nairobiwellness.test', 'professional', OrganizationStatus::Active],
+        ] as [$name, $slug, $country, $zone, $currency, $email, $ownerName, $ownerEmail, $plan, $status]) {
+            $owner = $this->user($ownerName, $ownerEmail, $password);
+            $owner->forceFill(['last_login_at' => now()->subDays(2)])->save();
+            $create(
+                profile: ['name' => $name, 'slug' => $slug, 'country_code' => $country, 'timezone' => $zone, 'currency' => $currency, 'email' => $email],
+                plan: Plan::query()->where('key', $plan)->firstOrFail(),
+                status: $status,
+                owner: $owner,
+                actor: $admin,
+            );
+        }
+
+        // One organization that was suspended, so the status history and the restore action show.
+        $lagos = Organization::query()->where('slug', 'lagos-family')->firstOrFail();
+        app(ChangeOrganizationStatus::class)($lagos, OrganizationStatus::Suspended, $admin, 'Payment overdue for two billing cycles.');
+        app(ChangeOrganizationStatus::class)($lagos, OrganizationStatus::Active, $admin, 'Payment received.');
+
+        $this->command?->info('Console fixture: admin@wellnest.test / password-1234, TOTP secret JBSWY3DPEHPK3PXP.');
     }
 
     private function user(string $name, string $email, string $password): User
@@ -260,6 +324,184 @@ class DesignFixtureSeeder extends Seeder
                 // Past visits: stamped directly (the state machine's clock check
                 // would refuse completing them "now" under a pinned clock).
                 $appointment->forceFill(['status' => AppointmentStatus::Completed, 'completed_at' => $appointment->ends_at])->save();
+            }
+        }
+    }
+
+    /**
+     * Comp 09: four featured resources and the six latest, with real (tiny) PDFs written by hand for the PDF ones.
+     * Written directly (the fixture has no signed-in manager); the app's own writer is SaveResource.
+     */
+    private function resources(Organization $organization): void
+    {
+        $guide = fn (string ...$p) => implode("\n\n", $p);
+        $rows = [
+            // [type, title, summary, body, minutes, published, featured, pdf, url]
+            ['guide', 'New Client Guide', 'Step-by-step guide to getting started with your care.', $guide(
+                'Welcome to WellNest. This guide walks you through your first weeks with us, from booking to your first session.',
+                'Before your first appointment, complete the intake form and read how we protect your information.',
+                'Arrive a few minutes early for an in-person visit, or open your telehealth link five minutes before the start time.',
+            ), 5, '2025-04-20 09:00', true, true, null],
+            ['form', 'Intake Form', 'Complete your intake information before your first appointment.', $guide(
+                'Please have your contact details, emergency contact and any current medication to hand.',
+                'Your answers are shared only with the clinician who will see you.',
+            ), 10, '2025-04-19 09:00', true, false, null],
+            ['video', 'Telehealth Guide', 'Learn how to join your telehealth sessions.', null, 3, '2025-04-18 09:00', true, false, 'https://example.org/wellnest/telehealth-guide'],
+            ['document', 'Privacy & Consent', 'Understand how your information is protected.', $guide(
+                'This document explains what we collect, why we collect it, who can see it and how long we keep it.',
+            ), 4, '2025-04-17 09:00', true, true, null],
+            ['guide', 'Therapy Session Expectations', 'What to expect during your therapy sessions.', $guide(
+                'A session lasts about fifty minutes. Your clinician will start by asking how you have been since the last visit.',
+                'You decide how much you share. You can pause, ask questions or stop at any time.',
+            ), 5, '2025-04-16 09:00', false, false, null],
+            ['form', 'Client Registration Form', 'Complete this form to create your client account.', $guide('Give us your name, date of birth and how you prefer to be contacted.'), 10, '2025-04-15 09:00', false, false, null],
+            ['video', 'Managing Anxiety', 'Helpful tips for managing anxiety in daily life.', null, 8, '2025-04-14 09:00', false, false, 'https://example.org/wellnest/managing-anxiety'],
+            ['document', 'Billing and Insurance Information', 'Learn about payment options and insurance coverage.', $guide('Fees are due at the time of the visit unless your insurer has agreed to pay us directly.'), 6, '2025-04-13 09:00', false, true, null],
+            ['guide', 'Mindfulness Exercises', 'Simple exercises to help you feel more present.', $guide('Try one minute of slow breathing: in for four counts, hold for four, out for six.'), 7, '2025-04-12 09:00', false, false, null],
+            ['form', 'Emergency Contact Form', 'Keep your emergency contact information up to date.', $guide('Tell us who we may call in an emergency and how they are related to you.'), 5, '2025-04-11 09:00', false, false, null],
+        ];
+
+        foreach ($rows as [$type, $title, $summary, $body, $minutes, $published, $featured, $pdf, $url]) {
+            $path = null;
+            $size = null;
+            if ($pdf) {
+                $path = "resources/{$organization->id}/".strtolower(Str::random(32)).'.pdf';
+                $bytes = $this->tinyPdf($title, (string) $body);
+                Storage::disk('local')->put($path, $bytes);
+                $size = strlen($bytes);
+            }
+
+            $resource = new \App\Models\Resource([
+                'type' => $type, 'title' => $title, 'summary' => $summary, 'body' => $body, 'external_url' => $url,
+                'reading_minutes' => $minutes, 'audience' => 'everyone',
+            ]);
+            $resource->forceFill([
+                'status' => 'published', 'published_at' => CarbonImmutable::parse($published, 'UTC'), 'is_featured' => $featured,
+                'file_path' => $path, 'file_size_bytes' => $size,
+            ])->save();
+        }
+    }
+
+    /** A valid one-page PDF written by hand (Helvetica text, correct xref): no library, no download. */
+    private function tinyPdf(string $title, string $body): string
+    {
+        $esc = fn (string $t) => str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], preg_replace('/[^\x20-\x7e]/', ' ', $t));
+        $lines = [];
+        foreach (explode("\n", wordwrap($body, 78, "\n", true)) as $line) {
+            $lines[] = $line;
+        }
+        $stream = "BT /F1 18 Tf 56 780 Td ({$esc($title)}) Tj ET\nBT /F1 11 Tf 56 750 Td 16 TL\n";
+        foreach ($lines as $line) {
+            $stream .= '('.$esc($line).") Tj T*\n";
+        }
+        $stream .= 'ET';
+
+        $objects = [
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+            '<< /Length '.strlen($stream)." >>\nstream\n{$stream}\nendstream",
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        ];
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+        foreach ($objects as $i => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($i + 1)." 0 obj\n{$object}\nendobj\n";
+        }
+        $xref = strlen($pdf);
+        $pdf .= "xref\n0 ".(count($objects) + 1)."\n0000000000 65535 f \n";
+        foreach ($offsets as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+
+        return $pdf."trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF\n";
+    }
+
+    /**
+     * The Messages comp (07): Sarah's inbox as of 28 Apr 2025 10:30. Clients cannot write until the portal exists, so the
+     * people in the comp are seeded as colleagues (direct threads); one real client thread (Sarah's own message) is added.
+     *
+     * @param  array<string, OrganizationMembership>  $clinicians
+     * @param  array<string, Client>  $clients
+     */
+    private function conversations(Organization $organization, OrganizationMembership $sarah, array $clinicians, array $clients, string $password): void
+    {
+        $role = Role::query()->forOrganization($organization->id)->where('key', 'clinician')->value('id');
+        $people = ['Sarah Carter' => $sarah, 'James Allen' => $clinicians['james'], 'Lisa Morgan' => $clinicians['lisa'], 'Emily Johnson' => $clinicians['emily']];
+        foreach (['Michael Brown', 'Sophia Davis', 'James Wilson', 'Olivia Martinez', 'Daniel Thomas', 'Grace Lee', 'Matthew Scott'] as $name) {
+            $member = new OrganizationMembership(['is_provider' => false]);
+            $user = $this->user($name, strtolower(str_replace(' ', '.', $name)).'.staff@wellnest.test', $password);
+            $member->forceFill(['user_id' => $user->id, 'status' => MembershipStatus::Active, 'joined_at' => now()])->save();
+            $member->roles()->attach($role);
+            $people[$name] = $member;
+        }
+
+        $at = fn (string $time) => CarbonImmutable::parse($time, self::TZ)->utc();
+        $online = ['Emily Johnson', 'Michael Brown', 'Sophia Davis', 'James Wilson', 'Olivia Martinez', 'Daniel Thomas'];
+        foreach ($online as $name) {
+            DB::table('users')->where('id', $people[$name]->user_id)->update(['last_seen_at' => $at('2025-04-28 10:29')->format('Y-m-d H:i:s.uP')]);
+        }
+
+        // [kind, title|other person, client, members, [[sender, time, body]...], [member => read-through time], reaction]
+        $threads = [
+            [ConversationKind::Direct, 'Emily Johnson', null, ['Emily Johnson'], [
+                ['Emily Johnson', '2025-04-28 10:12', "Hi Sarah,\nI just wanted to say thank you for the session today.\nIt really helped me. I feel more focused already."],
+                ['Sarah Carter', '2025-04-28 10:15', "That's wonderful to hear, Emily! 😊\nI'm glad you found it helpful. Remember, you can message me anytime if you have questions or need support."],
+                ['Emily Johnson', '2025-04-28 10:18', "Also, I'm not sure if I already sent the form for next week.\nCould you check on that for me?"],
+                ['Sarah Carter', '2025-04-28 10:21', "Yes, I've just sent it to your portal. You should see it now.\nLet me know if you don't receive it."],
+                ['Emily Johnson', '2025-04-28 10:24', 'Perfect! Got it. Thank you so much!'],
+            ], ['Sarah Carter' => '2025-04-28 10:21', 'Emily Johnson' => '2025-04-28 10:25'], ['Sarah Carter', 4, '👍']],
+            [ConversationKind::Direct, 'Michael Brown', null, ['Michael Brown'], [
+                ['Sarah Carter', '2025-04-28 09:40', 'Can you confirm Thursday at 2 PM works?'],
+                ['Michael Brown', '2025-04-28 09:48', "Sounds good. I'll be there."],
+            ], ['Sarah Carter' => '2025-04-28 09:40', 'Michael Brown' => '2025-04-28 09:41']],
+            [ConversationKind::Group, 'Therapy Team', null, ['James Allen', 'Lisa Morgan'], [
+                ['Sarah Carter', '2025-04-28 09:05', 'Morning all. Please add your notes before Friday.'],
+                ['James Allen', '2025-04-28 09:20', 'Will do.'],
+                ['James Allen', '2025-04-28 09:32', "I've uploaded the document."],
+            ], ['Sarah Carter' => '2025-04-28 09:10', 'James Allen' => '2025-04-28 09:32', 'Lisa Morgan' => '2025-04-28 09:32']],
+            [ConversationKind::Direct, 'Sophia Davis', null, ['Sophia Davis'], [['Sophia Davis', '2025-04-27 16:10', 'Can you send me the form again?']], ['Sarah Carter' => '2025-04-27 16:20']],
+            [ConversationKind::Direct, 'James Wilson', null, ['James Wilson'], [['James Wilson', '2025-04-27 11:02', 'Great, thank you!']], ['Sarah Carter' => '2025-04-27 11:05']],
+            [ConversationKind::Direct, 'Olivia Martinez', null, ['Olivia Martinez'], [['Olivia Martinez', '2025-04-27 08:15', 'No problem. Let me know if you need anything else.']], ['Sarah Carter' => '2025-04-27 08:20']],
+            [ConversationKind::Direct, 'Daniel Thomas', null, ['Daniel Thomas'], [['Daniel Thomas', '2025-04-26 15:30', 'The report is ready for review.']], ['Sarah Carter' => '2025-04-26 15:40']],
+            [ConversationKind::Direct, 'Grace Lee', null, ['Grace Lee'], [['Grace Lee', '2025-04-25 12:00', "I'll follow up with the client."]], ['Sarah Carter' => '2025-04-25 12:10']],
+            [ConversationKind::Direct, 'Matthew Scott', null, ['Matthew Scott'], [['Matthew Scott', '2025-04-24 17:45', 'Available at 2 PM tomorrow.']], ['Sarah Carter' => '2025-04-24 17:50']],
+            [ConversationKind::Group, 'Team Updates', null, ['Lisa Morgan', 'James Allen'], [['Lisa Morgan', '2025-04-22 09:00', 'Maintenance scheduled for Sunday at 2 AM.']], ['Sarah Carter' => '2025-04-22 09:30']],
+            [ConversationKind::Client, null, 'Liam Taylor', [], [['Sarah Carter', '2025-04-21 14:00', 'Hi Liam, just confirming your appointment on Thursday.']], ['Sarah Carter' => '2025-04-21 14:00']],
+        ];
+
+        foreach ($threads as $thread) {
+            [$kind, $title, $clientName, $members, $messages, $reads, $reaction] = array_pad($thread, 7, null);
+            $client = $clientName !== null ? $clients[$clientName] : null;
+            $everyone = array_values(array_unique(['Sarah Carter', ...$members]));
+            $first = $at($messages[0][1])->subMinutes(5);
+
+            $key = match ($kind) {
+                ConversationKind::Direct => 'd:'.collect([$sarah->id, $people[$title]->id])->sort()->implode('|'),
+                ConversationKind::Client => 'c:'.$client->id.'|'.$sarah->id,
+                default => null,
+            };
+            $conversation = new Conversation;
+            $conversation->forceFill([
+                'kind' => $kind, 'title' => $kind === ConversationKind::Group ? $title : null, 'client_id' => $client?->id,
+                'record_environment' => $client?->record_environment ?? RecordEnvironment::Live, 'unique_key' => $key,
+                'created_by_membership_id' => $sarah->id, 'last_message_at' => $at(end($messages)[1]),
+            ])->save();
+
+            foreach ($everyone as $name) {
+                $read = isset($reads[$name]) ? $at($reads[$name]) : null;
+                (new ConversationParticipant)->forceFill([
+                    'conversation_id' => $conversation->id, 'membership_id' => $people[$name]->id, 'joined_at' => $first, 'last_read_at' => $read,
+                ])->save();
+            }
+
+            foreach ($messages as $i => [$sender, $time, $body]) {
+                $message = new Message;
+                $message->forceFill(['conversation_id' => $conversation->id, 'sender_membership_id' => $people[$sender]->id, 'body' => $body, 'created_at' => $at($time)])->save();
+                if ($reaction !== null && $reaction[1] === $i) {
+                    (new MessageReaction)->forceFill(['conversation_id' => $conversation->id, 'message_id' => $message->id, 'membership_id' => $people[$reaction[0]]->id, 'emoji' => $reaction[2]])->save();
+                }
             }
         }
     }

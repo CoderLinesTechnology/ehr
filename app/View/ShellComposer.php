@@ -143,7 +143,12 @@ final class ShellComposer
             if ($item['any'] !== [] && ! Gate::any($item['any'])) {
                 continue;
             }
-            $items[] = $this->item($item);
+            $entry = $this->item($item);
+            if ($item['key'] === 'messages' && ($membership = $this->tenant->membership()) !== null) {
+                $unread = \App\Domain\Messaging\UnreadCount::for($membership);
+                $entry['badge'] = $unread > 0 ? ($unread > 99 ? '99+' : (string) $unread) : null;
+            }
+            $items[] = $entry;
         }
 
         return $items;

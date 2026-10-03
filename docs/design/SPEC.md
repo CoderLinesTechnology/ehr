@@ -12,6 +12,7 @@ other, the decisions below say which wins. Measured values live in:
 | [`spec/screens/10-clients.md`](spec/screens/10-clients.md) | Clients list |
 | [`spec/screens/01-appointments.md`](spec/screens/01-appointments.md) | Appointments (calendar week view, today's table, right rail) |
 | [`spec/screens/02-settings-organization.md`](spec/screens/02-settings-organization.md) | Settings → Organization |
+| [`spec/screens/09-resources.md`](spec/screens/09-resources.md) | Resources |
 
 Not yet measured (measure when the module is built): 03 Programs, 04/11/06 Telehealth, 07 Messages, 09 Resources.
 

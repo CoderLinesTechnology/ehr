@@ -70,6 +70,12 @@ class AppServiceProvider extends ServiceProvider
             'availability_rule' => Models\AvailabilityRule::class,
             'blocked_time' => Models\BlockedTime::class,
             'appointment' => Models\Appointment::class,
+            'resource' => Models\Resource::class,
+            'conversation' => Models\Conversation::class,
+            'conversation_participant' => Models\ConversationParticipant::class,
+            'message' => Models\Message::class,
+            'message_reaction' => Models\MessageReaction::class,
+            'message_attachment' => Models\MessageAttachment::class,
         ]);
 
         Paginator::defaultView('pagination.default');

@@ -42,7 +42,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         require __DIR__.'/app/clients.php';
         require __DIR__.'/app/scheduling.php';
+        require __DIR__.'/app/messages.php';
         require __DIR__.'/app/settings.php';
+        require __DIR__.'/app/resources.php';
         require __DIR__.'/app/demo.php';
     });
 
