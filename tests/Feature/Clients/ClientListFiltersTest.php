@@ -16,7 +16,7 @@ class ClientListFiltersTest extends TestCase
 
         $this->assertSame('', $filters->q);
         $this->assertSame('open', $filters->status);
-        $this->assertSame(['active', 'inactive'], $filters->statuses());
+        $this->assertSame(['pending', 'active', 'inactive'], $filters->statuses());
         $this->assertSame('all', $filters->records);
         $this->assertNull($filters->clinician);
         $this->assertSame('last_name', $filters->sort);
@@ -28,10 +28,11 @@ class ClientListFiltersTest extends TestCase
     public function every_status_maps_to_the_statuses_it_allows(): void
     {
         $this->assertSame(['active'], ClientListFilters::from(['status' => 'active'])->statuses());
+        $this->assertSame(['pending'], ClientListFilters::from(['status' => 'pending'])->statuses());
         $this->assertSame(['inactive'], ClientListFilters::from(['status' => 'inactive'])->statuses());
         $this->assertSame(['archived'], ClientListFilters::from(['status' => 'archived'])->statuses());
-        $this->assertSame(['active', 'inactive', 'archived'], ClientListFilters::from(['status' => 'all'])->statuses());
-        $this->assertSame(['active', 'inactive'], ClientListFilters::from(['status' => 'open'])->statuses());
+        $this->assertSame(['pending', 'active', 'inactive', 'archived'], ClientListFilters::from(['status' => 'all'])->statuses());
+        $this->assertSame(['pending', 'active', 'inactive'], ClientListFilters::from(['status' => 'open'])->statuses());
     }
 
     #[Test]

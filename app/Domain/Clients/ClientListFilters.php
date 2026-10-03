@@ -14,7 +14,7 @@ final readonly class ClientListFilters
     /** Default: everyone still in care (active and inactive), not archived. */
     public const STATUS_OPEN = 'open';
 
-    public const STATUSES = ['open', 'active', 'inactive', 'archived', 'all'];
+    public const STATUSES = ['open', 'pending', 'active', 'inactive', 'archived', 'all'];
 
     public const RECORDS = ['all', 'live', 'demo'];
 
