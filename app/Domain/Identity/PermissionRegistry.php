@@ -58,6 +58,14 @@ final class PermissionRegistry
             ['demo.manage', $o, 'Organization', 'Manage demo data', 'Load, reset and delete demo data.', false],
             ['reports.view', $o, 'Reports', 'View reports', '', false],
 
+            // Messaging
+            ['messages.send', $o, 'Messaging', 'Message the team', 'Conversations with other staff and groups the user belongs to.', true],
+            ['messages.client', $o, 'Messaging', 'Message clients', 'Conversations with clients the user can see.', true],
+
+            // Resources
+            ['resources.view', $o, 'Resources', 'View resources', 'Guides, forms, documents, videos and FAQs.', false],
+            ['resources.manage', $o, 'Resources', 'Manage resources', 'Publish, edit and retire resources.', false],
+
             // Platform (Super Admin console)
             ['platform.dashboard.view', $p, 'Platform', 'View platform dashboard', '', false],
             ['platform.organizations.view', $p, 'Platform', 'View organizations', 'Organization profile, status, plan and usage counts — no client data.', false],

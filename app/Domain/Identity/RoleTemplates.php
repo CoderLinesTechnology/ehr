@@ -20,6 +20,7 @@ final class RoleTemplates
             'clients.view', 'clients.create', 'clients.edit',
             'appointments.view', 'appointments.create', 'appointments.edit', 'appointments.cancel',
             'availability.manage_own', 'team.view',
+            'messages.send', 'messages.client', 'resources.view',
         ];
 
         return [
@@ -39,6 +40,7 @@ final class RoleTemplates
                     'appointments.cancel', 'appointments.overbook', 'availability.manage_own', 'availability.manage_all',
                     'organization.settings.manage', 'locations.manage', 'services.manage', 'team.view', 'team.manage',
                     'audit.view', 'demo.manage', 'reports.view',
+                    'messages.send', 'messages.client', 'resources.view', 'resources.manage',
                 ],
             ],
             'clinician' => [
@@ -51,7 +53,7 @@ final class RoleTemplates
                 'name' => 'Clinical Supervisor',
                 'description' => 'Clinician who can see every client and appointment.',
                 'locked' => false,
-                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view'],
+                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage'],
             ],
             'receptionist' => [
                 'name' => 'Receptionist',
@@ -61,19 +63,20 @@ final class RoleTemplates
                     'clients.view', 'clients.view_all', 'clients.create', 'clients.edit',
                     'appointments.view', 'appointments.view_all', 'appointments.create', 'appointments.edit', 'appointments.cancel',
                     'availability.manage_own', 'availability.manage_all', 'team.view',
+                    'messages.send', 'messages.client', 'resources.view',
                 ],
             ],
             'billing' => [
                 'name' => 'Billing Staff',
                 'description' => 'Billing and payments. No clinical access.',
                 'locked' => false,
-                'permissions' => ['clients.view', 'clients.view_all', 'appointments.view', 'appointments.view_all', 'reports.view', 'team.view'],
+                'permissions' => ['clients.view', 'clients.view_all', 'appointments.view', 'appointments.view_all', 'reports.view', 'team.view', 'messages.send', 'resources.view'],
             ],
             'staff' => [
                 'name' => 'Staff',
                 'description' => 'Basic access for other staff.',
                 'locked' => false,
-                'permissions' => ['appointments.view', 'team.view'],
+                'permissions' => ['appointments.view', 'team.view', 'messages.send', 'resources.view'],
             ],
         ];
     }
