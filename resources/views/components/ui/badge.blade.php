@@ -1,10 +1,13 @@
 @props([
     'tone' => 'neutral',
     'icon' => null,
+    'dot' => false,
 ])
 @php
-    $tone = in_array($tone, ['neutral', 'info', 'primary', 'success', 'warning', 'danger', 'demo'], true) ? $tone : 'neutral';
-    // Demo records must never be mistaken for real ones: striped amber, flask icon and the word, never colour alone.
-    $icon ??= $tone === 'demo' ? 'flask' : null;
+    // Status colours follow the screens (SPEC decision 7): Active/Confirmed = success, Pending/Scheduled-blue = info,
+    // Scheduled/Inactive = neutral. Status is never colour alone: the badge always carries text.
+    $tones = ['neutral', 'info', 'pending', 'primary', 'success', 'warning', 'danger', 'demo', 'purple', 'teal', 'pink', 'completed', 'outline', 'tag', 'priority-high', 'priority-medium'];
+    $tone = in_array($tone, $tones, true) ? $tone : 'neutral';
+    $icon ??= $tone === 'demo' ? 'flask-conical' : null;
 @endphp
-<span {{ $attributes->class(['badge', 'badge--'.$tone]) }}>@if ($icon)<x-ui.icon :name="$icon" :size="12" />@endif<span>@if ($slot->isEmpty() && $tone === 'demo')Demo@else{{ $slot }}@endif</span></span>
+<span {{ $attributes->class(['badge', 'badge--'.$tone, 'badge--dot' => $dot]) }}>@if ($icon)<x-ui.icon :name="$icon" :size="12" />@endif<span>{{ $slot->isEmpty() && $tone === 'demo' ? 'Demo' : $slot }}</span></span>

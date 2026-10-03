@@ -47,13 +47,13 @@ abstract class DesignSystemTestCase extends BaseTestCase
         ];
 
         return array_replace([
-            'platformName' => 'Carebase',
+            'platformName' => 'WellNest',
             'announcement' => null,
             'legal' => ['termsUrl' => null, 'privacyUrl' => null],
             'user' => ['name' => 'Avery Mensah', 'email' => 'avery@example.org', 'initials' => 'AM'],
             'organization' => ['name' => 'Harbor Light', 'slug' => 'harbor-light', 'logoUrl' => null, 'isDemoDataPresent' => false],
             'organizations' => [],
-            'nav' => [$item('dashboard', 'Dashboard', 'home', true), $item('clients', 'Clients', 'users'), $item('messages', 'Messages', 'message', false, 3)],
+            'nav' => [$item('dashboard', 'Dashboard', 'house', true), $item('clients', 'Clients', 'users'), $item('messages', 'Messages', 'message-circle', false, 3)],
             'secondaryNav' => [$item('settings', 'Settings', 'settings')],
             'searchUrl' => 'https://app.test/search',
             'accountUrl' => 'https://app.test/account',

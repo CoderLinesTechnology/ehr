@@ -8,9 +8,10 @@
     'block' => false,
 ])
 @php
-    $variant = in_array($variant, ['primary', 'secondary', 'ghost', 'danger', 'link'], true) ? $variant : 'primary';
-    $size = in_array($size, ['sm', 'md', 'lg'], true) ? $size : 'md';
-    $iconSize = ['sm' => 16, 'md' => 18, 'lg' => 20][$size];
+    $variant = in_array($variant, ['primary', 'secondary', 'tonal', 'neutral', 'success', 'warning', 'danger', 'info', 'ghost', 'link'], true) ? $variant : 'primary';
+    $size = in_array($size, ['xs', 'sm', 'md', 'lg'], true) ? $size : 'md';
+    // Heights: xs 24 / sm 32 (compact, filter panels) / md 40 (default) / lg 44. Sizes 28 and 36 on the sheet are not used by any screen.
+    $iconSize = ['xs' => 14, 'sm' => 16, 'md' => 18, 'lg' => 18][$size];
     $hasLabel = ! $slot->isEmpty();
     $classes = [
         'btn',

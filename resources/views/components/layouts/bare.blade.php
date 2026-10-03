@@ -7,7 +7,7 @@
     // The frame behind the minimal layout. It is NOT bound to the $shell composer, so error pages that use it
     // keep rendering when the database or settings are unavailable. Every shell value has a fallback.
     $shell = is_array($shell) ? $shell : [];
-    $platformName = $shell['platformName'] ?? config('app.name', 'Carebase');
+    $platformName = $shell['platformName'] ?? config('app.name', 'WellNest');
     $user = $shell['user'] ?? null;
     $logoutUrl = $shell['logoutUrl'] ?? null;
     $width = in_array($width, ['sm', 'md', 'lg'], true) ? $width : 'md';
@@ -23,7 +23,7 @@
 
     <header class="minimal-header">
         <div class="minimal-header__inner">
-            <a href="{{ url('/') }}" class="auth-brand__link" aria-label="{{ $platformName }} home"><x-ui.logo :name="$platformName" :size="30" /></a>
+            <a href="{{ url('/') }}" class="auth-brand__link" aria-label="{{ $platformName }} home"><x-ui.logo :name="$platformName"  /></a>
             @if (is_array($user) && filled($logoutUrl))
                 <form method="POST" action="{{ $logoutUrl }}" class="minimal-header__signout">
                     @csrf

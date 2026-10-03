@@ -4,7 +4,7 @@
 ])
 @php
     $shell = $previewShell ?? ($shell ?? []);
-    $platformName = $shell['platformName'] ?? config('app.name', 'Carebase');
+    $platformName = $shell['platformName'] ?? config('app.name', 'WellNest');
     $termsUrl = $shell['legal']['termsUrl'] ?? null;
     $privacyUrl = $shell['legal']['privacyUrl'] ?? null;
     $pageTitle = implode(' · ', array_filter([$title, $platformName]));
@@ -19,7 +19,7 @@
 
     <div class="auth-shell">
         <header class="auth-brand">
-            <a href="{{ url('/') }}" class="auth-brand__link" aria-label="{{ $platformName }} home"><x-ui.logo :name="$platformName" :size="34" /></a>
+            <a href="{{ url('/') }}" class="auth-brand__link" aria-label="{{ $platformName }} home"><x-ui.logo :name="$platformName"  /></a>
         </header>
 
         <main id="main" class="auth-card" tabindex="-1">

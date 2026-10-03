@@ -1,18 +1,17 @@
 @props([
     'name' => null,
-    'size' => 28,
+    'size' => 'md',
     'mark' => false,
+    'light' => false,
 ])
 @php
-    $name = filled($name) ? $name : config('app.name', 'Carebase');
+    // size: "md" (sidebar, 40x37 box = 38x35 ink + 22px wordmark), "sm" (phone/tablet top bar), or a pixel width for the mark alone.
+    $name = filled($name) ? $name : config('app.name', 'WellNest');
+    $px = is_numeric($size) ? (int) $size : ($size === 'sm' ? 28 : 40);
+    $height = (int) round($px * 49 / 53);
 @endphp
-{{-- Wordmark: a rounded mark (a plus, for care) next to the product name. mark=true shows the symbol alone. --}}
-<span {{ $attributes->class(['logo']) }}>
-    <svg class="logo__mark" xmlns="http://www.w3.org/2000/svg" width="{{ (int) $size }}" height="{{ (int) $size }}" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-        <rect width="32" height="32" rx="9" fill="var(--logo-bg, #2354c8)"/>
-        <path d="M16 8v16M8 16h16" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
-        <circle cx="16" cy="16" r="3.1" fill="var(--logo-bg, #2354c8)"/>
-        <circle cx="16" cy="16" r="1.5" fill="#fff"/>
-    </svg>
+{{-- The WellNest two-leaf mark (public/images/wellnest-mark.svg, vectorised from the comps) next to the product wordmark. mark=true shows the symbol alone. --}}
+<span {{ $attributes->class(['logo', 'logo--sm' => $size === 'sm', 'logo--light' => $light]) }}>
+    <img class="logo__mark" src="{{ asset('images/wellnest-mark.svg') }}" width="{{ $px }}" height="{{ $height }}" alt="" decoding="async">
     @unless ($mark)<span class="logo__name">{{ $name }}</span>@endunless
 </span>

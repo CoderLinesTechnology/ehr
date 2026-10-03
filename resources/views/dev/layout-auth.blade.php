@@ -14,7 +14,7 @@
             <x-ui.input type="password" name="sg_auth_password" autocomplete="off" required />
         </x-ui.field>
         <div class="auth-row">
-            <x-ui.checkbox name="sg_auth_remember" label="Remember me on this device" :hidden-default="false" />
+            <span></span>
             <a href="#forgot" class="auth-row__link">Forgot password?</a>
         </div>
         <x-ui.button type="submit" size="lg" :block="true">Sign in</x-ui.button>

@@ -1,5 +1,6 @@
 <?php
 
+use App\View\ShellComposer;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
@@ -17,60 +18,79 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 | layouts render from the sample shell below and never query settings.
 */
 
-$sampleShell = static function (bool $platform = false): array {
+$sampleShell = static function (bool $platform = false, string $preset = 'default'): array {
     $item = static fn (string $key, string $label, string $icon, bool $active = false, ?int $badge = null): array => [
         'key' => $key, 'label' => $label, 'icon' => $icon, 'url' => '#'.$key, 'active' => $active, 'badge' => $badge,
     ];
 
+    // Presets reproduce the shells of the comps (docs/design/comps) for pixel comparison:
+    // "clients" = comp 10 (6 items, Clients active), "appointments" = comp 01 (10 items), "settings" = comp 02.
+    $active = match ($preset) {
+        'clients' => 'clients', 'appointments' => 'calendar', 'settings' => 'settings', default => 'dashboard'
+    };
+    $six = [
+        $item('dashboard', 'Dashboard', 'house', $active === 'dashboard'),
+        $item('clients', 'Clients', 'users', $active === 'clients'),
+        $item('calendar', 'Appointments', 'calendar', $active === 'calendar'),
+        $item('messages', 'Messages', 'message-circle', false, 3),
+        $item('resources', 'Resources', 'book-open'),
+    ];
+    $ten = [
+        $item('dashboard', 'Dashboard', 'house'),
+        $item('clients', 'Clients', 'users'),
+        $item('calendar', 'Appointments', 'calendar', $active === 'calendar'),
+        $item('messages', 'Messages', 'message-circle', false, 3),
+        $item('tasks', 'Tasks', 'calendar-check'),
+        $item('documents', 'Documents', 'file-text'),
+        $item('telehealth', 'Telehealth', 'video'),
+        $item('programs', 'Programs', 'users-round'),
+        $item('reports', 'Reports', 'chart-column'),
+    ];
+
     return [
-        'platformName' => 'Carebase',
-        'announcement' => ['message' => 'Scheduled maintenance on Sunday between 02:00 and 03:00 UTC. The app stays available but may be slower.', 'level' => 'info'],
+        'platformName' => 'WellNest',
+        'announcement' => $preset === 'default' ? ['message' => 'Scheduled maintenance on Sunday between 02:00 and 03:00 UTC. The app stays available but may be slower.', 'level' => 'info'] : null,
         'legal' => ['termsUrl' => '#terms', 'privacyUrl' => '#privacy'],
-        'user' => ['name' => 'Avery Mensah', 'email' => 'avery.mensah@example.org', 'initials' => 'AM'],
-        'organization' => $platform ? null : ['name' => 'Harbor Light Behavioral Health', 'slug' => 'harbor-light', 'logoUrl' => null, 'isDemoDataPresent' => true],
-        'organizations' => $platform ? [] : [
-            ['name' => 'Harbor Light Behavioral Health', 'url' => '#harbor-light', 'current' => true],
+        'user' => ['name' => $preset === 'default' ? 'Avery Mensah' : 'Sarah Carter', 'email' => 'sarah@example.org', 'initials' => 'SC'],
+        'organization' => $platform ? null : ['name' => 'WellNest Therapy Center', 'slug' => 'wellnest', 'logoUrl' => null, 'isDemoDataPresent' => $preset === 'default'],
+        'organizations' => $platform || $preset !== 'default' ? [] : [
+            ['name' => 'WellNest Therapy Center', 'url' => '#wellnest', 'current' => true],
             ['name' => 'Northfield Counseling Group', 'url' => '#northfield', 'current' => false],
         ],
         'nav' => $platform ? [
-            $item('dashboard', 'Dashboard', 'activity', true),
-            $item('organizations', 'Organizations', 'building'),
+            $item('dashboard', 'Dashboard', 'layout-dashboard', true),
+            $item('organizations', 'Organizations', 'building-2'),
             $item('users', 'Users', 'users'),
             $item('plans', 'Plans & features', 'layers'),
-            $item('settings', 'Platform settings', 'sliders'),
+            $item('settings', 'Platform settings', 'sliders-horizontal'),
             $item('audit', 'Audit log', 'history'),
-        ] : [
-            $item('dashboard', 'Dashboard', 'home', true),
-            $item('calendar', 'Calendar', 'calendar'),
-            $item('clients', 'Clients', 'users'),
-            $item('messages', 'Messages', 'message', false, 3),
-            $item('tasks', 'Tasks', 'check-square', false, 12),
-            $item('billing', 'Billing', 'credit-card'),
-            $item('documents', 'Documents', 'file'),
-            $item('telehealth', 'Telehealth', 'video'),
-            $item('programs', 'Programs', 'layers'),
-            $item('reports', 'Reports', 'bar-chart'),
-        ],
-        'secondaryNav' => $platform ? [] : [$item('settings', 'Settings', 'settings')],
+        ] : ($preset === 'appointments' ? $ten : $six),
+        'secondaryNav' => $platform ? [] : [$item('settings', 'Settings', 'settings', $active === 'settings')],
         'searchUrl' => url('/dev/styleguide'),
         'accountUrl' => Route::has('account.profile') ? route('account.profile') : '#account',
         'logoutUrl' => route('dev.styleguide.logout'),
         'platformUrl' => $platform ? null : url('/dev/styleguide/platform'),
         'appUrl' => $platform ? url('/dev/styleguide') : null,
+        'roleLabel' => $platform ? 'Super Admin' : ($preset === 'default' ? 'Organization Administrator' : 'Organization'),
+        'unreadNotifications' => $preset === 'default' ? 0 : 1,
+        'notifications' => [],
     ];
 };
 
-// Every icon the library knows, read from the component itself so the grid can never drift.
-$iconNames = static function (): array {
-    preg_match_all("/^\s+'([a-z0-9-]+)' => '/m", (string) file_get_contents(resource_path('views/components/ui/icon.blade.php')), $matches);
-
-    return $matches[1];
-};
+// A curated set of Lucide icons (the product uses these); the full set is in resources/icons/lucide.
+$iconNames = static fn (): array => [
+    'house', 'users', 'user', 'user-plus', 'user-check', 'users-round', 'calendar', 'calendar-check', 'calendar-plus', 'clock', 'message-circle', 'send',
+    'book-open', 'settings', 'bell', 'search', 'funnel', 'plus', 'pencil', 'trash-2', 'x', 'check', 'chevron-down', 'chevron-up', 'chevron-left', 'chevron-right',
+    'arrow-up', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-left-right', 'ellipsis', 'menu', 'eye', 'eye-off', 'lock', 'shield-check', 'log-out',
+    'file-text', 'file', 'video', 'phone', 'mail', 'map-pin', 'globe', 'building-2', 'layers', 'chart-column', 'heart', 'info', 'circle-alert',
+    'triangle-alert', 'circle-check', 'circle-x', 'copy', 'printer', 'download', 'upload', 'refresh-cw', 'link', 'image', 'smartphone', 'flask-conical', 'inbox',
+    'layout-dashboard', 'sliders-horizontal', 'history', 'clipboard-list', 'stethoscope', 'activity', 'star', 'paperclip',
+];
 
 // Layouts read $shell from the composer; on these routes they read the sample shell instead, so the composer is
 // swapped for a stub (no settings queries, no tenant) before any view is made.
 $useSampleShell = static function (): void {
-    app()->instance(\App\View\ShellComposer::class, new class
+    app()->instance(ShellComposer::class, new class
     {
         public function compose($view): void {}
     });
@@ -120,6 +140,13 @@ Route::prefix('dev/styleguide')
 
             return view('dev.layout-minimal', ['shell' => $sampleShell()]);
         })->name('minimal');
+
+        // Shell presets that reproduce the comps' sidebar/top bar, for tools/visual comparison.
+        Route::get('/shell/{preset}', function (string $preset) use ($sampleShell, $useSampleShell) {
+            $useSampleShell();
+
+            return view('dev.shell', ['shell' => $sampleShell(false, $preset), 'preset' => $preset]);
+        })->whereIn('preset', ['clients', 'appointments', 'settings'])->name('shell');
 
         Route::get('/errors/{code}', function (int $code) {
             $messages = [403 => 'Your organization is suspended.', 404 => 'No query results for model [App\\Models\\Client] 0198-example', 419 => 'CSRF token mismatch.', 429 => 'Too Many Requests', 500 => 'SQLSTATE[08006] connection refused', 503 => 'Service Unavailable'];

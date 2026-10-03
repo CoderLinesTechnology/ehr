@@ -1,11 +1,14 @@
 @props([
     'name' => '',
+    'src' => null,
     'color' => null,
+    'tone' => null,
     'size' => 'md',
     'decorative' => false,
 ])
 @php
-    $size = in_array($size, ['sm', 'md', 'lg', 'xl'], true) ? $size : 'md';
+    // Sizes: xs 24, sm 32, md 40, lg 56, xl 72, shell 42 (top bar). A photo (src) wins over initials.
+    $size = in_array($size, ['xs', 'sm', 'md', 'lg', 'xl', 'shell'], true) ? $size : 'md';
     $parts = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
     $initials = $parts === []
         ? '?'
@@ -21,6 +24,8 @@
         // Pick whichever of near-black / white has the higher contrast against the background.
         $foreground = $luminance > 0.179 ? '#0f1a2e' : '#ffffff';
     }
-    $palette = $hex === null ? 'c'.(crc32(mb_strtolower(trim((string) $name))) % 8) : null;
+    // tone="brand" is the solid blue top-bar avatar; otherwise a stable tint derived from the name.
+    $palette = ($hex === null && $tone !== 'brand') ? 'c'.(crc32(mb_strtolower(trim((string) $name))) % 8) : null;
+    $safeSrc = filled($src) && ! preg_match('/^\s*(?:javascript|data|vbscript):/i', (string) $src) ? (string) $src : null;
 @endphp
-<span {{ $attributes->class(['avatar', 'avatar--'.$size, 'avatar--'.$palette => $palette !== null]) }} @if ($hex !== null) style="--avatar-bg: {{ $hex }}; --avatar-fg: {{ $foreground }}" @endif @if ($decorative) aria-hidden="true" @elseif (filled($name)) role="img" aria-label="{{ $name }}" @endif><span aria-hidden="true">{{ $initials }}</span></span>
+<span {{ $attributes->class(['avatar', 'avatar--'.$size, 'avatar--'.$palette => $palette !== null, 'avatar--brand' => $tone === 'brand' && $hex === null]) }} @if ($hex !== null) style="--avatar-bg: {{ $hex }}; --avatar-fg: {{ $foreground }}" @endif @if ($decorative) aria-hidden="true" @elseif (filled($name)) role="img" aria-label="{{ $name }}" @endif>@if ($safeSrc !== null)<img src="{{ $safeSrc }}" alt="" class="avatar__img" loading="lazy" decoding="async">@else<span aria-hidden="true">{{ $initials }}</span>@endif</span>

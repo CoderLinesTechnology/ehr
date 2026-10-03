@@ -22,7 +22,7 @@
 
     <div class="sg-demo" style="margin-top: 1rem">
         <p class="sg-label">Page header and breadcrumbs</p>
-        <x-ui.page-header title="Jordan Avery" description="Client #C-1042 &middot; Intake completed">
+        <x-ui.page-header title="Jordan Avery" description="Client #C-1042 · Intake completed">
             <x-slot:breadcrumbs>
                 <x-ui.breadcrumbs :items="[['label' => 'Clients', 'url' => '#cards'], ['label' => 'Active', 'url' => '#cards'], ['label' => 'Jordan Avery']]" />
             </x-slot:breadcrumbs>

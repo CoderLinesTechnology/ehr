@@ -52,7 +52,7 @@
         <p class="text-sm">.text-sm</p>
         <p class="text-xs">.text-xs</p>
         <p class="text-right">.text-right</p>
-        <p class="nowrap">.nowrap keeps this on one line however narrow the screen gets.</p>
+        <div style="overflow-x: auto"><p class="nowrap">.nowrap keeps this on one line however narrow the screen gets.</p></div>
         <p class="truncate" style="max-width: 16rem">.truncate cuts a very long single line with an ellipsis</p>
         <x-ui.status-page icon="clock" title="Awaiting approval" message="Your organization is being reviewed. We will email you as soon as it is approved." style="margin: 1rem auto 0" />
     </div>

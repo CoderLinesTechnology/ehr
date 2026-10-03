@@ -6,6 +6,7 @@
     'keep' => [],
     'label' => null,
     'id' => null,
+    'size' => 'md',
 ])
 @php
     $action = filled($action) ? (string) $action : url()->current();
@@ -29,7 +30,7 @@
     }
     $clearUrl = $action.($kept !== [] ? (str_contains($action, '?') ? '&' : '?').implode('&', array_map(static fn ($p) => rawurlencode($p[0]).'='.rawurlencode($p[1]), $kept)) : '');
 @endphp
-<form method="GET" action="{{ $action }}" role="search" {{ $attributes->class(['search-input']) }}>
+<form method="GET" action="{{ $action }}" role="search" {{ $attributes->class(['search-input', 'search-input--sm' => $size === 'sm']) }}>
     @foreach ($kept as [$k, $v])<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
     <label for="{{ $sid }}" class="sr-only">{{ $label ?? $placeholder }}</label>
     <button type="submit" class="search-input__submit" aria-label="Search"><x-ui.icon name="search" :size="18" /></button>

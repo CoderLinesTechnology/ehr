@@ -21,18 +21,22 @@ use Illuminate\View\View;
  */
 final class ShellComposer
 {
-    /** Staff navigation, in the order of the product's information architecture. */
+    /**
+     * Staff navigation in SPEC decision 4 order (docs/design/SPEC.md): Dashboard, Clients, Appointments, Messages, Tasks,
+     * Documents, Resources, Telehealth, Programs, Reports; Settings is appended as the last item (see secondaryNav()).
+     * Icons are Lucide names (resources/icons/lucide). The calendar module is labelled "Appointments".
+     */
     private const APP_NAV = [
-        ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'home', 'route' => 'app.dashboard', 'active' => ['app.dashboard'], 'feature' => null, 'any' => []],
-        ['key' => 'calendar', 'label' => 'Calendar', 'icon' => 'calendar', 'route' => 'app.calendar.index', 'active' => ['app.calendar.*', 'app.appointments.*'], 'feature' => 'calendar', 'any' => ['appointments.view', 'appointments.view_all']],
+        ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'house', 'route' => 'app.dashboard', 'active' => ['app.dashboard'], 'feature' => null, 'any' => []],
         ['key' => 'clients', 'label' => 'Clients', 'icon' => 'users', 'route' => 'app.clients.index', 'active' => ['app.clients.*'], 'feature' => 'clients', 'any' => ['clients.view', 'clients.view_all']],
-        ['key' => 'messages', 'label' => 'Messages', 'icon' => 'message', 'route' => 'app.messages.index', 'active' => ['app.messages.*'], 'feature' => 'messaging', 'any' => []],
-        ['key' => 'tasks', 'label' => 'Tasks', 'icon' => 'check-square', 'route' => 'app.tasks.index', 'active' => ['app.tasks.*'], 'feature' => 'tasks', 'any' => []],
-        ['key' => 'billing', 'label' => 'Billing', 'icon' => 'credit-card', 'route' => 'app.billing.index', 'active' => ['app.billing.*'], 'feature' => 'billing', 'any' => []],
-        ['key' => 'documents', 'label' => 'Documents', 'icon' => 'file', 'route' => 'app.documents.index', 'active' => ['app.documents.*'], 'feature' => 'documents', 'any' => []],
+        ['key' => 'calendar', 'label' => 'Appointments', 'icon' => 'calendar', 'route' => 'app.calendar.index', 'active' => ['app.calendar.*', 'app.appointments.*'], 'feature' => 'calendar', 'any' => ['appointments.view', 'appointments.view_all']],
+        ['key' => 'messages', 'label' => 'Messages', 'icon' => 'message-circle', 'route' => 'app.messages.index', 'active' => ['app.messages.*'], 'feature' => 'messaging', 'any' => []],
+        ['key' => 'tasks', 'label' => 'Tasks', 'icon' => 'calendar-check', 'route' => 'app.tasks.index', 'active' => ['app.tasks.*'], 'feature' => 'tasks', 'any' => []],
+        ['key' => 'documents', 'label' => 'Documents', 'icon' => 'file-text', 'route' => 'app.documents.index', 'active' => ['app.documents.*'], 'feature' => 'documents', 'any' => []],
+        ['key' => 'resources', 'label' => 'Resources', 'icon' => 'book-open', 'route' => 'app.resources.index', 'active' => ['app.resources.*'], 'feature' => null, 'any' => []],
         ['key' => 'telehealth', 'label' => 'Telehealth', 'icon' => 'video', 'route' => 'app.telehealth.index', 'active' => ['app.telehealth.*'], 'feature' => 'telehealth', 'any' => []],
-        ['key' => 'programs', 'label' => 'Programs', 'icon' => 'layers', 'route' => 'app.programs.index', 'active' => ['app.programs.*'], 'feature' => 'programs', 'any' => []],
-        ['key' => 'reports', 'label' => 'Reports', 'icon' => 'bar-chart', 'route' => 'app.reports.index', 'active' => ['app.reports.*'], 'feature' => null, 'any' => ['reports.view']],
+        ['key' => 'programs', 'label' => 'Programs', 'icon' => 'users-round', 'route' => 'app.programs.index', 'active' => ['app.programs.*'], 'feature' => 'programs', 'any' => []],
+        ['key' => 'reports', 'label' => 'Reports', 'icon' => 'chart-column', 'route' => 'app.reports.index', 'active' => ['app.reports.*'], 'feature' => null, 'any' => ['reports.view']],
     ];
 
     /** Anyone holding one of these sees the Settings entry. */
@@ -42,12 +46,12 @@ final class ShellComposer
     ];
 
     private const PLATFORM_NAV = [
-        ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'activity', 'route' => 'platform.dashboard', 'active' => ['platform.dashboard'], 'permission' => 'platform.dashboard.view'],
-        ['key' => 'organizations', 'label' => 'Organizations', 'icon' => 'building', 'route' => 'platform.organizations.index', 'active' => ['platform.organizations.*'], 'permission' => 'platform.organizations.view'],
+        ['key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'route' => 'platform.dashboard', 'active' => ['platform.dashboard'], 'permission' => 'platform.dashboard.view'],
+        ['key' => 'organizations', 'label' => 'Organizations', 'icon' => 'building-2', 'route' => 'platform.organizations.index', 'active' => ['platform.organizations.*'], 'permission' => 'platform.organizations.view'],
         ['key' => 'users', 'label' => 'Users', 'icon' => 'users', 'route' => 'platform.users.index', 'active' => ['platform.users.*'], 'permission' => 'platform.users.view'],
         ['key' => 'plans', 'label' => 'Plans & features', 'icon' => 'layers', 'route' => 'platform.plans.index', 'active' => ['platform.plans.*'], 'permission' => 'platform.plans.manage'],
-        ['key' => 'admins', 'label' => 'Administrators', 'icon' => 'shield', 'route' => 'platform.admins.index', 'active' => ['platform.admins.*'], 'permission' => 'platform.admins.manage'],
-        ['key' => 'settings', 'label' => 'Platform settings', 'icon' => 'sliders', 'route' => 'platform.settings.edit', 'active' => ['platform.settings.*'], 'permission' => 'platform.settings.manage'],
+        ['key' => 'admins', 'label' => 'Administrators', 'icon' => 'shield-check', 'route' => 'platform.admins.index', 'active' => ['platform.admins.*'], 'permission' => 'platform.admins.manage'],
+        ['key' => 'settings', 'label' => 'Platform settings', 'icon' => 'sliders-horizontal', 'route' => 'platform.settings.edit', 'active' => ['platform.settings.*'], 'permission' => 'platform.settings.manage'],
         ['key' => 'audit', 'label' => 'Audit log', 'icon' => 'history', 'route' => 'platform.audit.index', 'active' => ['platform.audit.*'], 'permission' => 'platform.audit.view'],
     ];
 
@@ -97,10 +101,32 @@ final class ShellComposer
             'searchUrl' => ($organization && Route::has('app.search')) ? route('app.search') : null,
             'accountUrl' => Route::has('account.profile') ? route('account.profile') : null,
             'logoutUrl' => route('logout'),
+            'roleLabel' => $this->roleLabel($user, $organization, $isPlatformRoute),
+            // No notifications module yet: the bell shows its red dot only when this is > 0. Messages badge likewise (item 'badge').
+            'unreadNotifications' => 0,
+            'notifications' => [],
             'platformUrl' => ($user && ! $isPlatformRoute && $this->permissions->isPlatformUser($user) && Route::has('platform.dashboard'))
                 ? route('platform.dashboard') : null,
             'appUrl' => ($user && $isPlatformRoute) ? route('home') : null,
         ];
+    }
+
+    /** Second line of the top-bar identity: the member's first role (alphabetical), else the organization name. */
+    private function roleLabel(?User $user, ?Organization $organization, bool $isPlatformRoute): string
+    {
+        if ($isPlatformRoute) {
+            return 'Super Admin';
+        }
+
+        $membership = $this->tenant->membership();
+        if ($membership !== null) {
+            $role = $membership->roles()->orderBy('roles.name')->limit(1)->pluck('roles.name')->first();
+            if (is_string($role) && $role !== '') {
+                return $role;
+            }
+        }
+
+        return $organization?->name ?? '';
     }
 
     /** @return list<array<string, mixed>> */

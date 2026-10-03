@@ -3,12 +3,13 @@
     'max' => 100,
     'label' => null,
     'showValue' => true,
+    'percentage' => false,
 ])
 @php
     $max = max(1, (int) $max);
     $current = min(max((int) $value, 0), $max);
     $percent = (int) round($current / $max * 100);
-    $text = $current.' of '.$max;
+    $text = $percentage ? $percent.'%' : $current.' of '.$max;
 @endphp
 <div {{ $attributes->class(['progress']) }}>
     @if (filled($label) || $showValue)

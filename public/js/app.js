@@ -1,5 +1,5 @@
 /*
- * Carebase UI behaviour. Vanilla, dependency-free, driven by data-* attributes (no inline handlers: the CSP
+ * WellNest UI behaviour. Vanilla, dependency-free, driven by data-* attributes (no inline handlers: the CSP
  * allows scripts from this origin only). Everything here is an enhancement: pages work without it.
  */
 (function () {
@@ -12,37 +12,6 @@
   function $$(selector, context) { return Array.prototype.slice.call((context || doc).querySelectorAll(selector)); }
   function closest(node, selector) { return node && node.closest ? node.closest(selector) : null; }
   function prefersReducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
-
-  /* ---------------------------------------------------------------- theme */
-
-  var THEME_KEY = 'carebase-theme';
-  var storage = {
-    get: function (key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
-    set: function (key, value) { try { window.localStorage.setItem(key, value); } catch (e) { /* storage blocked: the choice lasts for this page only */ } }
-  };
-
-  // Applied straight away, before the page has finished loading, to limit a flash of the wrong theme.
-  var savedTheme = storage.get(THEME_KEY);
-  if (savedTheme === 'light' || savedTheme === 'dark') { root.setAttribute('data-theme', savedTheme); }
-
-  function initTheme() {
-    var buttons = $$('[data-theme-toggle]');
-    if (!buttons.length) { return; }
-    var dark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-    function effective() { return root.getAttribute('data-theme') || (dark && dark.matches ? 'dark' : 'light'); }
-    function sync() { buttons.forEach(function (b) { b.setAttribute('aria-pressed', effective() === 'dark' ? 'true' : 'false'); }); }
-    buttons.forEach(function (button) {
-      button.hidden = false;
-      button.addEventListener('click', function () {
-        var next = effective() === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', next);
-        storage.set(THEME_KEY, next);
-        sync();
-      });
-    });
-    if (dark && dark.addEventListener) { dark.addEventListener('change', sync); }
-    sync();
-  }
 
   /* -------------------------------------------------------------- sidebar */
 
@@ -448,12 +417,32 @@
     });
   }
 
+  /* ----------------------------------------------------------- notifications */
+
+  // All / Unread / Mentions filter inside the bell dropdown (items carry data-notif-unread / data-notif-mention).
+  function initNotifications() {
+    $$('[data-notifications]').forEach(function (menu) {
+      var tabs = $$('[data-notif-tab]', menu);
+      if (!tabs.length) { return; }
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var kind = tab.getAttribute('data-notif-tab');
+          tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+          $$('[data-notif-unread]', menu).forEach(function (item) {
+            var show = kind === 'all' || (kind === 'unread' && item.getAttribute('data-notif-unread') === '1') || (kind === 'mention' && item.getAttribute('data-notif-mention') === '1');
+            item.hidden = !show;
+          });
+        });
+      });
+    });
+  }
+
   /* ------------------------------------------------------------------- boot */
 
   function boot() {
-    initTheme();
     initSidebar();
     initDropdowns();
+    initNotifications();
     initDialogs();
     initAlerts();
     initForms();
