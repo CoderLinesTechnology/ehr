@@ -48,6 +48,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         require __DIR__.'/app/programs.php';
         require __DIR__.'/app/telehealth.php';
         require __DIR__.'/app/demo.php';
+        require __DIR__.'/app/tasks.php';
+        require __DIR__.'/app/documents.php';
+        require __DIR__.'/app/reports.php';
     });
 
     Route::prefix('platform')->name('platform.')->middleware('platform')->group(__DIR__.'/platform.php');

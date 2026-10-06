@@ -56,7 +56,19 @@ final class PermissionRegistry
             ['roles.manage', $o, 'Team', 'Manage roles & permissions', 'Create roles and change what they allow.', true],
             ['audit.view', $o, 'Organization', 'View audit log', 'Who did what, when, in this organization.', true],
             ['demo.manage', $o, 'Organization', 'Manage demo data', 'Load, reset and delete demo data.', false],
-            ['reports.view', $o, 'Reports', 'View reports', '', false],
+            ['reports.view', $o, 'Reports', 'View reports', 'Operational reports built from live records (never demo data).', false],
+            ['reports.export', $o, 'Reports', 'Export reports', 'Download reports as CSV. Every export is audited.', true],
+
+            // Tasks
+            ['tasks.view', $o, 'Tasks', 'View your tasks', 'Tasks assigned to you or created by you; complete your own.', false],
+            ['tasks.view_all', $o, 'Tasks', 'View all tasks', "Every task in the organization, whoever it is assigned to.", false],
+            ['tasks.manage', $o, 'Tasks', 'Create and assign tasks', 'Create tasks, assign them to colleagues, edit and cancel them.', false],
+
+            // Documents
+            ['documents.view', $o, 'Documents', 'View documents', 'Administrative documents (IDs, insurance cards, consents, correspondence) of clients the user can see.', true],
+            ['documents.view_clinical', $o, 'Documents', 'View clinical documents', 'Documents in clinical categories (assessments, reports, letters with clinical content) of clients the user can see.', true],
+            ['documents.upload', $o, 'Documents', 'Upload documents', 'Add documents and new versions in the categories the user can view.', true],
+            ['documents.manage', $o, 'Documents', 'Manage documents', 'Document categories; archive and restore documents.', false],
 
             // Messaging
             ['messages.send', $o, 'Messaging', 'Message the team', 'Conversations with other staff and groups the user belongs to.', true],

@@ -169,6 +169,15 @@ class DesignFixtureSeeder extends Seeder
             $this->appointments($clients, $services, $clinicians, $locations, $sarah);
             $this->conversations($organization, $owner, $clinicians, $clients, $password);
             $this->telehealth($organization, $clients, $services, $clinicians, $locations, $sarah);
+
+            // Tasks, documents and reports: one fixture class per module (database/seeders/Fixture), so modules built
+            // side by side never edit this file at the same time. Each class: run(organization, owner, clinicians,
+            // clients, sarah) inside this tenant context.
+            foreach ([Fixture\TasksFixture::class, Fixture\DocumentsFixture::class, Fixture\ReportsFixture::class] as $fixture) {
+                if (class_exists($fixture)) {
+                    app($fixture)->run($organization, $owner, $clinicians, $clients, $sarah);
+                }
+            }
         });
 
         $tenant->runAs($created->organization, fn () => $this->resources($created->organization));

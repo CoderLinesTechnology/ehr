@@ -23,6 +23,8 @@ final class RoleTemplates
             'messages.send', 'messages.client', 'resources.view',
             'programs.view', 'programs.enroll',
             'telehealth.join', 'telehealth.notes',
+            'tasks.view', 'tasks.manage',
+            'documents.view', 'documents.view_clinical', 'documents.upload',
         ];
 
         return [
@@ -45,6 +47,8 @@ final class RoleTemplates
                     'messages.send', 'messages.client', 'resources.view', 'resources.manage',
                     'telehealth.join', 'telehealth.notes', 'telehealth.manage',
                     'programs.view', 'programs.manage', 'programs.enroll',
+                    'tasks.view', 'tasks.view_all', 'tasks.manage',
+                    'documents.view', 'documents.view_clinical', 'documents.upload', 'documents.manage', 'reports.export',
                 ],
             ],
             'clinician' => [
@@ -57,7 +61,7 @@ final class RoleTemplates
                 'name' => 'Clinical Supervisor',
                 'description' => 'Clinician who can see every client and appointment.',
                 'locked' => false,
-                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage'],
+                'permissions' => [...$clinician, 'clients.view_all', 'appointments.view_all', 'reports.view', 'resources.manage', 'tasks.view_all'],
             ],
             'receptionist' => [
                 'name' => 'Receptionist',
@@ -68,19 +72,20 @@ final class RoleTemplates
                     'appointments.view', 'appointments.view_all', 'appointments.create', 'appointments.edit', 'appointments.cancel',
                     'availability.manage_own', 'availability.manage_all', 'team.view',
                     'messages.send', 'messages.client', 'resources.view',
+                    'tasks.view', 'tasks.manage', 'documents.view', 'documents.upload',
                 ],
             ],
             'billing' => [
                 'name' => 'Billing Staff',
                 'description' => 'Billing and payments. No clinical access.',
                 'locked' => false,
-                'permissions' => ['clients.view', 'clients.view_all', 'appointments.view', 'appointments.view_all', 'reports.view', 'team.view', 'messages.send', 'resources.view'],
+                'permissions' => ['clients.view', 'clients.view_all', 'appointments.view', 'appointments.view_all', 'reports.view', 'reports.export', 'team.view', 'messages.send', 'resources.view', 'tasks.view', 'documents.view'],
             ],
             'staff' => [
                 'name' => 'Staff',
                 'description' => 'Basic access for other staff.',
                 'locked' => false,
-                'permissions' => ['appointments.view', 'team.view', 'messages.send', 'resources.view'],
+                'permissions' => ['appointments.view', 'team.view', 'messages.send', 'resources.view', 'tasks.view'],
             ],
         ];
     }
